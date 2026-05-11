@@ -210,6 +210,56 @@
     var(--bg);
 }
 
+/* ─── Room form ───────────────────────────────────────────────────────── */
+.room-form {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+}
+.room-form label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--text-soft);
+  gap: 8px;
+}
+.room-form input[type="number"] {
+  width: 90px;
+  padding: 4px 6px;
+  font-size: 12px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--panel);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.room-form input[type="number"]:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+.room-presets {
+  display: flex;
+  gap: 4px;
+  margin-top: 4px;
+}
+.room-presets button {
+  flex: 1;
+  font-size: 11px;
+  padding: 4px 0;
+  border: 1px solid var(--border);
+  background: var(--panel);
+  border-radius: 4px;
+  cursor: pointer;
+  color: var(--text-soft);
+}
+.room-presets button:hover {
+  border-color: var(--border-strong);
+  color: var(--text);
+}
+
 /* ─── Metrics ─────────────────────────────────────────────────────────── */
 .metrics-list {
   display: flex;

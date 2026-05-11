@@ -50,6 +50,7 @@ export interface ProjectActions {
   addWall: (wall: Omit<Wall, "id"> & { id?: string }) => string;
   addOpening: (opening: Omit<Opening, "id"> & { id?: string }) => string;
   addUtility: (utility: Omit<Utility, "id"> & { id?: string }) => string;
+  setRoomDimensions: (widthMm: number, depthMm: number, ceilingMm: number) => void;
   resetProject: () => void;
   renameProject: (name: string) => void;
 }
@@ -116,6 +117,32 @@ export const useStore = create<StoreState>((set) => ({
       }));
       return id;
     },
+    setRoomDimensions: (widthMm, depthMm, ceilingMm) =>
+      set((s) => {
+        const w = Math.max(500, Math.round(widthMm));
+        const d = Math.max(500, Math.round(depthMm));
+        const c = Math.max(2000, Math.round(ceilingMm));
+        const corners = [
+          { x: 0, y: 0 },
+          { x: w, y: 0 },
+          { x: w, y: d },
+          { x: 0, y: d },
+        ];
+        // Preserve wall IDs (wall_1..wall_4) so module references stay valid.
+        const oldWalls = s.project.room.walls;
+        const walls: Wall[] = corners.map((c, i) => ({
+          id: oldWalls[i]?.id ?? `wall_${i + 1}`,
+          start: c,
+          end: corners[(i + 1) % corners.length],
+          thickness: oldWalls[i]?.thickness ?? WALL_THICKNESS,
+        }));
+        return {
+          project: touch({
+            ...s.project,
+            room: { ...s.project.room, walls, ceilingHeight: c },
+          }),
+        };
+      }),
     resetProject: () => set({ project: emptyProject(), selectedModuleId: null }),
     renameProject: (name) => set((s) => ({ project: touch({ ...s.project, name }) })),
   },
