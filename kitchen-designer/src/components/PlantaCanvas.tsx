@@ -327,25 +327,48 @@ export function PlantaCanvas() {
   }
 
   function moveModuleByDelta(m: ModulePlacement, delta: Vec2) {
+    const item = getCatalogItem(m.sku);
+    if (!item) return;
+
     if (m.wallId && m.offsetFromStart !== undefined) {
       const wall = project.room.walls.find((w) => w.id === m.wallId);
       if (!wall) return;
       const dir = wallDirection(wall);
-      // Componente del delta a lo largo del muro
-      const along = delta.x * dir.x + delta.y * dir.y;
-      const item = getCatalogItem(m.sku);
-      if (!item) return;
-      const len = wallLength(wall);
-      const next = Math.max(0, Math.min(len - item.width, m.offsetFromStart + along));
-      actions.updateModule(m.id, { offsetFromStart: next });
+      // Posición "intencionada" del ancla del módulo tras el drag, en coords
+      // de mundo (sobre el eje del muro original, sin contar inset).
+      const oldAnchor = {
+        x: wall.start.x + dir.x * m.offsetFromStart,
+        y: wall.start.y + dir.y * m.offsetFromStart,
+      };
+      const newAnchor = {
+        x: oldAnchor.x + delta.x,
+        y: oldAnchor.y + delta.y,
+      };
+      const snap = nearestWall(newAnchor, project.room.walls);
+      if (!snap) return;
+
+      if (snap.wall.id !== m.wallId) {
+        // Cambio de muro: re-centramos sobre el punto al que arrastró el usuario.
+        const newLen = wallLength(snap.wall);
+        const newOff = Math.max(0, Math.min(newLen - item.width, snap.offset - item.width / 2));
+        actions.updateModule(m.id, {
+          wallId: snap.wall.id,
+          offsetFromStart: newOff,
+        });
+      } else {
+        // Mismo muro: deslizamos a lo largo del muro por la componente del
+        // delta proyectada sobre la dirección.
+        const along = delta.x * dir.x + delta.y * dir.y;
+        const len = wallLength(wall);
+        const next = Math.max(0, Math.min(len - item.width, m.offsetFromStart + along));
+        actions.updateModule(m.id, { offsetFromStart: next });
+      }
     } else if (m.position) {
-      // Posible re-snap a muro si entra en tolerancia
-      const newPos = { x: m.position.x + delta.x, y: m.position.y + delta.y };
-      const snap = nearestWall(newPos, project.room.walls);
-      const item = getCatalogItem(m.sku);
       // Para módulos libres que ya están colocados, sólo re-anclamos si el
        // usuario los arrastra explícitamente cerca de un muro (400 mm).
-      if (snap && item && snap.distance <= 400) {
+      const newPos = { x: m.position.x + delta.x, y: m.position.y + delta.y };
+      const snap = nearestWall(newPos, project.room.walls);
+      if (snap && snap.distance <= 400) {
         const len = wallLength(snap.wall);
         const off = Math.max(0, Math.min(len - item.width, snap.offset - item.width / 2));
         actions.updateModule(m.id, {
