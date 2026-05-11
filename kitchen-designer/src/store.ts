@@ -47,6 +47,7 @@ function emptyProject(): Project {
 export type Selection =
   | { kind: "module"; id: string }
   | { kind: "obstacle"; id: string }
+  | { kind: "opening"; id: string }
   | null;
 
 export interface ProjectActions {
@@ -55,6 +56,8 @@ export interface ProjectActions {
   updateModule: (id: string, patch: Partial<ModulePlacement>) => void;
   addWall: (wall: Omit<Wall, "id"> & { id?: string }) => string;
   addOpening: (opening: Omit<Opening, "id"> & { id?: string }) => string;
+  removeOpening: (id: string) => void;
+  updateOpening: (id: string, patch: Partial<Opening>) => void;
   addUtility: (utility: Omit<Utility, "id"> & { id?: string }) => string;
   addObstacle: (obstacle: Omit<Obstacle, "id"> & { id?: string }) => string;
   removeObstacle: (id: string) => void;
@@ -119,6 +122,24 @@ export const useStore = create<StoreState>((set) => ({
       }));
       return id;
     },
+    removeOpening: (id) =>
+      set((s) => ({
+        project: touch({
+          ...s.project,
+          room: { ...s.project.room, openings: s.project.room.openings.filter((o) => o.id !== id) },
+        }),
+        selection: s.selection?.kind === "opening" && s.selection.id === id ? null : s.selection,
+      })),
+    updateOpening: (id, patch) =>
+      set((s) => ({
+        project: touch({
+          ...s.project,
+          room: {
+            ...s.project.room,
+            openings: s.project.room.openings.map((o) => (o.id === id ? { ...o, ...patch } : o)),
+          },
+        }),
+      })),
     addUtility: (utility) => {
       const id = utility.id ?? makeId("util");
       set((s) => ({

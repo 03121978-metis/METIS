@@ -57,6 +57,19 @@
   background: var(--panel-alt);
   color: var(--text);
 }
+.btn-primary {
+  background: var(--accent);
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  padding: 5px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  color: #fff;
+}
+.btn-primary:hover {
+  filter: brightness(1.08);
+}
 
 /* ─── Layout ──────────────────────────────────────────────────────────── */
 .app-body {
@@ -279,6 +292,60 @@
 .room-add button:hover {
   background: var(--accent-soft);
   border-color: var(--accent);
+}
+
+.room-fill {
+  margin-top: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.room-fill-label {
+  font-size: 11px;
+  color: var(--text-soft);
+}
+.room-fill-buttons {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+}
+.room-fill-buttons button {
+  font-size: 11px;
+  padding: 4px 0;
+  border: 1px solid var(--border);
+  background: var(--panel);
+  border-radius: 4px;
+  cursor: pointer;
+  color: var(--text);
+}
+.room-fill-buttons button:hover {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+
+.insp-toggle input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+}
+.insp-rotate {
+  display: flex;
+  gap: 4px;
+}
+.insp-rotate button {
+  flex: 1;
+  font-size: 11px;
+  padding: 4px 0;
+  border: 1px solid var(--border);
+  background: var(--panel);
+  border-radius: 4px;
+  cursor: pointer;
+  color: var(--text-soft);
+}
+.insp-rotate button.active {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent);
+  font-weight: 500;
 }
 
 /* ─── Inspector ───────────────────────────────────────────────────────── */

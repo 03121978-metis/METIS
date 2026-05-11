@@ -5,6 +5,7 @@ import { MetricsSidebar } from "./components/MetricsSidebar";
 import { PlantaCanvas } from "./components/PlantaCanvas";
 import { Scene3D } from "./components/Scene3D";
 import { useProject, useStore } from "./store";
+import { exportProjectPdf } from "./lib/exportPdf";
 
 type TabKey = "planta" | "3d";
 
@@ -24,6 +25,13 @@ function Topbar() {
         onChange={(e) => rename(e.target.value)}
         spellCheck={false}
       />
+      <button
+        className="btn-primary"
+        onClick={() => exportProjectPdf(project)}
+        title="Exportar a PDF"
+      >
+        Exportar PDF
+      </button>
       <button className="btn-ghost" onClick={() => reset()} title="Reiniciar proyecto">
         Reset
       </button>

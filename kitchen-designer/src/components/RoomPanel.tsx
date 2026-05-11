@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { useProject, useStore } from "../store";
+import { wallLength } from "../kitchen/validation";
+import { autoFillWallPlan } from "../lib/autoFill";
 
 function bboxOf(walls: { start: { x: number; y: number }; end: { x: number; y: number } }[]) {
   const xs = walls.flatMap((w) => [w.start.x, w.end.x]);
@@ -12,8 +14,7 @@ function bboxOf(walls: { start: { x: number; y: number }; end: { x: number; y: n
 
 export function RoomPanel() {
   const project = useProject();
-  const setRoomDimensions = useStore((s) => s.actions.setRoomDimensions);
-  const addObstacle = useStore((s) => s.actions.addObstacle);
+  const actions = useStore((s) => s.actions);
   const setSelection = useStore((s) => s.setSelection);
 
   const bbox = bboxOf(project.room.walls);
@@ -21,7 +22,6 @@ export function RoomPanel() {
   const [depth, setDepth] = useState<number>(bbox.depth);
   const [ceiling, setCeiling] = useState<number>(project.room.ceilingHeight);
 
-  // Re-sync inputs if the room is reset externally.
   useEffect(() => {
     setWidth(bbox.width);
     setDepth(bbox.depth);
@@ -33,7 +33,45 @@ export function RoomPanel() {
     const w = next.w ?? width;
     const d = next.d ?? depth;
     const c = next.c ?? ceiling;
-    setRoomDimensions(w, d, c);
+    actions.setRoomDimensions(w, d, c);
+  }
+
+  function addDoor() {
+    const wall = project.room.walls[0];
+    if (!wall) return;
+    const len = wallLength(wall);
+    const w = Math.min(820, Math.max(700, len * 0.3));
+    const id = actions.addOpening({
+      wallId: wall.id,
+      kind: "door",
+      offsetFromStart: Math.max(0, (len - w) / 2),
+      width: w,
+      height: 2100,
+    });
+    setSelection({ kind: "opening", id });
+  }
+
+  function addWindow() {
+    const wall = project.room.walls[0];
+    if (!wall) return;
+    const len = wallLength(wall);
+    const w = Math.min(1200, Math.max(600, len * 0.4));
+    const id = actions.addOpening({
+      wallId: wall.id,
+      kind: "window",
+      offsetFromStart: Math.max(0, (len - w) / 2),
+      width: w,
+      height: 1200,
+      sillHeight: 900,
+    });
+    setSelection({ kind: "opening", id });
+  }
+
+  function autoFillWall(wallId: string) {
+    const wall = project.room.walls.find((w) => w.id === wallId);
+    if (!wall) return;
+    const placements = autoFillWallPlan(wall, project.room.openings);
+    for (const p of placements) actions.addModule(p);
   }
 
   return (
@@ -45,36 +83,21 @@ export function RoomPanel() {
       <div className="room-form">
         <label>
           <span>Ancho</span>
-          <input
-            type="number"
-            min={500}
-            step={50}
-            value={width}
+          <input type="number" min={500} step={50} value={width}
             onChange={(e) => setWidth(Number(e.target.value))}
-            onBlur={() => commit({ w: width })}
-          />
+            onBlur={() => commit({ w: width })} />
         </label>
         <label>
           <span>Fondo</span>
-          <input
-            type="number"
-            min={500}
-            step={50}
-            value={depth}
+          <input type="number" min={500} step={50} value={depth}
             onChange={(e) => setDepth(Number(e.target.value))}
-            onBlur={() => commit({ d: depth })}
-          />
+            onBlur={() => commit({ d: depth })} />
         </label>
         <label>
           <span>Techo</span>
-          <input
-            type="number"
-            min={2000}
-            step={10}
-            value={ceiling}
+          <input type="number" min={2000} step={10} value={ceiling}
             onChange={(e) => setCeiling(Number(e.target.value))}
-            onBlur={() => commit({ c: ceiling })}
-          />
+            onBlur={() => commit({ c: ceiling })} />
         </label>
         <div className="room-presets">
           <button type="button" onClick={() => { setWidth(3000); setDepth(3000); setCeiling(2400); commit({ w: 3000, d: 3000, c: 2400 }); }}>3×3</button>
@@ -82,38 +105,36 @@ export function RoomPanel() {
           <button type="button" onClick={() => { setWidth(5000); setDepth(3500); setCeiling(2500); commit({ w: 5000, d: 3500, c: 2500 }); }}>5×3.5</button>
         </div>
         <div className="room-add">
-          <button
-            type="button"
-            onClick={() => {
-              const cx = Math.round(width / 2 - 150);
-              const cy = Math.round(depth / 2 - 150);
-              const id = addObstacle({
-                kind: "column",
-                position: { x: cx, y: cy },
-                width: 300,
-                depth: 300,
-                height: project.room.ceilingHeight,
-              });
-              setSelection({ kind: "obstacle", id });
-            }}
-          >
-            + Columna
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              const id = addObstacle({
-                kind: "pilaster",
-                position: { x: 100, y: 100 },
-                width: 400,
-                depth: 200,
-                height: project.room.ceilingHeight,
-              });
-              setSelection({ kind: "obstacle", id });
-            }}
-          >
-            + Pilastra
-          </button>
+          <button type="button" onClick={() => {
+            const id = actions.addObstacle({
+              kind: "column",
+              position: { x: Math.round(width / 2 - 150), y: Math.round(depth / 2 - 150) },
+              width: 300, depth: 300, height: project.room.ceilingHeight,
+            });
+            setSelection({ kind: "obstacle", id });
+          }}>+ Columna</button>
+          <button type="button" onClick={() => {
+            const id = actions.addObstacle({
+              kind: "pilaster",
+              position: { x: 100, y: 100 },
+              width: 400, depth: 200, height: project.room.ceilingHeight,
+            });
+            setSelection({ kind: "obstacle", id });
+          }}>+ Pilastra</button>
+        </div>
+        <div className="room-add">
+          <button type="button" onClick={addDoor}>+ Puerta</button>
+          <button type="button" onClick={addWindow}>+ Ventana</button>
+        </div>
+        <div className="room-fill">
+          <span className="room-fill-label">Auto-rellenar muro</span>
+          <div className="room-fill-buttons">
+            {project.room.walls.map((w, i) => (
+              <button key={w.id} type="button" onClick={() => autoFillWall(w.id)} title={`${Math.round(wallLength(w))} mm`}>
+                M{i + 1}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
     </>

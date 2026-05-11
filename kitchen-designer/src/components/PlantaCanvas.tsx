@@ -6,6 +6,7 @@ import { useProject, useActions, useStore } from "../store";
 import { getCatalogItem } from "../kitchen/catalog";
 import { nearestWall, wallDirection, wallLength } from "../kitchen/validation";
 import type { ModulePlacement, Obstacle, Vec2, Wall } from "../kitchen/types";
+import { setStage } from "../lib/stageRef";
 
 interface ViewTransform {
   scale: number; // px por mm
@@ -273,13 +274,20 @@ export function PlantaCanvas() {
       if (!selection) return;
       e.preventDefault();
       if (selection.kind === "module") actions.removeModule(selection.id);
-      else actions.removeObstacle(selection.id);
+      else if (selection.kind === "obstacle") actions.removeObstacle(selection.id);
+      else if (selection.kind === "opening") actions.removeOpening(selection.id);
     }
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [selection, actions]);
 
   const stageRef = useRef<Konva.Stage>(null);
+
+  // Expose stage globally for PDF export snapshot.
+  useEffect(() => {
+    setStage(stageRef.current);
+    return () => setStage(null);
+  }, [size.width, size.height]);
 
   // Click vacío en el escenario → deseleccionar
   function handleStageClick(e: KonvaEventObject<MouseEvent | TouchEvent>) {
@@ -373,14 +381,20 @@ export function PlantaCanvas() {
               };
               const pa = toScreen(a, transform);
               const pb = toScreen(b, transform);
+              const isSel = selection?.kind === "opening" && selection.id === op.id;
               return (
                 <Line
                   key={op.id}
                   points={[pa.x, pa.y, pb.x, pb.y]}
                   stroke={op.kind === "door" ? "#8e6b3a" : "#5a9fd6"}
                   strokeWidth={Math.max(6, wall.thickness * transform.scale + 2)}
+                  shadowEnabled={isSel}
+                  shadowColor="#1f6feb"
+                  shadowBlur={isSel ? 10 : 0}
                   lineCap="butt"
-                  listening={false}
+                  hitStrokeWidth={20}
+                  onClick={() => setSelection({ kind: "opening", id: op.id })}
+                  onTap={() => setSelection({ kind: "opening", id: op.id })}
                 />
               );
             })}
