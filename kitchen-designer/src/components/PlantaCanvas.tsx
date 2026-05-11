@@ -15,7 +15,8 @@ interface ViewTransform {
   offsetY: number;
 }
 
-const SNAP_TOLERANCE_MM = 400;
+// El snap está siempre activo (snap al muro más cercano) salvo que se sostenga
+// Shift al soltar — en ese caso el módulo se coloca como isla libre.
 
 function computeFit(width: number, height: number, walls: Wall[]): ViewTransform {
   if (walls.length === 0 || width === 0 || height === 0) {
@@ -245,7 +246,7 @@ export function PlantaCanvas() {
     const item = getCatalogItem(sku);
     const world = getDropWorld(e);
     const snap = nearestWall(world, project.room.walls);
-    if (snap && snap.distance <= SNAP_TOLERANCE_MM) {
+    if (snap && !e.shiftKey) {
       const len = wallLength(snap.wall);
       const widthForOffset = item?.width ?? 0;
       const off = Math.max(0, Math.min(Math.max(0, len - widthForOffset), snap.offset - widthForOffset / 2));
@@ -270,7 +271,7 @@ export function PlantaCanvas() {
     const world = getDropWorld(e);
     const snap = nearestWall(world, project.room.walls);
 
-    if (snap && snap.distance <= SNAP_TOLERANCE_MM) {
+    if (snap && !e.shiftKey) {
       const len = wallLength(snap.wall);
       const off = Math.max(0, Math.min(len - item.width, snap.offset - item.width / 2));
       const id = actions.addModule({
@@ -338,7 +339,9 @@ export function PlantaCanvas() {
       const newPos = { x: m.position.x + delta.x, y: m.position.y + delta.y };
       const snap = nearestWall(newPos, project.room.walls);
       const item = getCatalogItem(m.sku);
-      if (snap && item && snap.distance <= SNAP_TOLERANCE_MM) {
+      // Para módulos libres que ya están colocados, sólo re-anclamos si el
+       // usuario los arrastra explícitamente cerca de un muro (400 mm).
+      if (snap && item && snap.distance <= 400) {
         const len = wallLength(snap.wall);
         const off = Math.max(0, Math.min(len - item.width, snap.offset - item.width / 2));
         actions.updateModule(m.id, {
@@ -370,6 +373,10 @@ export function PlantaCanvas() {
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
     >
+      <div className="planta-hint">
+        Arrastra desde el catálogo · el módulo va al muro más cercano · mantén
+        {" "}<kbd>Shift</kbd> al soltar para colocarlo como isla
+      </div>
       {size.width > 0 && size.height > 0 && (
         <Stage ref={stageRef} width={size.width} height={size.height} onMouseDown={handleStageClick} onTouchStart={handleStageClick}>
           <Layer listening={false}>
