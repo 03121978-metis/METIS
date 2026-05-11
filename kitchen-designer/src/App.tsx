@@ -89,10 +89,25 @@ function CenterTabs() {
   );
 }
 
+function PlacingBanner() {
+  const placingSku = useStore((s) => s.placingSku);
+  const setPlacingSku = useStore((s) => s.setPlacingSku);
+  if (!placingSku) return null;
+  return (
+    <div className="placing-banner">
+      Modo colocar: <strong>{placingSku}</strong>. Haz click en la planta donde quieras el módulo.
+      <button type="button" onClick={() => setPlacingSku(null)} className="placing-banner-cancel">
+        Cancelar
+      </button>
+    </div>
+  );
+}
+
 export default function App() {
   return (
     <div className="app">
       <Topbar />
+      <PlacingBanner />
       <div className="app-body">
         <CatalogSidebar />
         <CenterTabs />

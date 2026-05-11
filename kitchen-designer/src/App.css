@@ -75,6 +75,31 @@
   filter: brightness(1.08);
 }
 
+.placing-banner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  background: var(--accent);
+  color: #fff;
+  padding: 6px 16px;
+  font-size: 13px;
+  font-weight: 500;
+  flex-shrink: 0;
+}
+.placing-banner-cancel {
+  background: rgba(255, 255, 255, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  color: #fff;
+  padding: 2px 10px;
+  font-size: 11px;
+  border-radius: 3px;
+  cursor: pointer;
+}
+.placing-banner-cancel:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
 /* ─── Layout ──────────────────────────────────────────────────────────── */
 .app-body {
   flex: 1;
@@ -155,19 +180,27 @@
   flex-direction: column;
   gap: 6px;
 }
+.family-items > li {
+  display: block;
+}
 .catalog-card {
+  display: block;
+  width: 100%;
+  text-align: left;
   border: 1px solid var(--border);
   border-radius: 6px;
   padding: 6px 8px;
   background: var(--panel);
-  cursor: grab;
+  cursor: pointer;
   user-select: none;
+  font: inherit;
+  color: inherit;
 }
 .catalog-card:hover {
   border-color: var(--border-strong);
   background: var(--panel-alt);
 }
-.catalog-card:active { cursor: grabbing; }
+.catalog-card:active { transform: scale(0.99); }
 .catalog-card.placing {
   background: var(--accent-soft);
   border-color: var(--accent);

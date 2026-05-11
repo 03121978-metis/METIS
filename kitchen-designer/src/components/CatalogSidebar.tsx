@@ -1,14 +1,9 @@
 import { useMemo, useState } from "react";
 import { CATALOG, FAMILY_LABEL, FAMILY_ORDER, groupByFamily } from "../kitchen/catalog";
-import type { CatalogItem, Family } from "../kitchen/types";
-import { setDraggingSku } from "../lib/dragSku";
+import type { Family } from "../kitchen/types";
 import { useStore } from "../store";
 
-interface Props {
-  onDragStartItem?: (item: CatalogItem) => void;
-}
-
-export function CatalogSidebar({ onDragStartItem }: Props) {
+export function CatalogSidebar() {
   const grouped = useMemo(() => groupByFamily(CATALOG), []);
   const placingSku = useStore((s) => s.placingSku);
   const setPlacingSku = useStore((s) => s.setPlacingSku);
@@ -20,6 +15,10 @@ export function CatalogSidebar({ onDragStartItem }: Props) {
 
   function toggle(f: Family) {
     setOpen((prev) => ({ ...prev, [f]: !prev[f] }));
+  }
+
+  function pick(sku: string) {
+    setPlacingSku(placingSku === sku ? null : sku);
   }
 
   return (
@@ -47,28 +46,22 @@ export function CatalogSidebar({ onDragStartItem }: Props) {
               {isOpen && (
                 <ul className="family-items">
                   {items.map((item) => (
-                    <li
-                      key={item.sku}
-                      className={`catalog-card ${placingSku === item.sku ? "placing" : ""}`}
-                      draggable
-                      onClick={() => setPlacingSku(placingSku === item.sku ? null : item.sku)}
-                      onDragStart={(e) => {
-                        e.dataTransfer.setData("application/x-kitchen-sku", item.sku);
-                        e.dataTransfer.effectAllowed = "copy";
-                        setDraggingSku(item.sku);
-                        onDragStartItem?.(item);
-                      }}
-                      onDragEnd={() => setDraggingSku(null)}
-                      title={`${item.width} × ${item.depth} × ${item.height} mm — click para colocar`}
-                    >
-                      <div className="card-top">
-                        <span className="card-sku">{item.sku}</span>
-                        <span className="card-price">{item.price} €</span>
-                      </div>
-                      <div className="card-name">{item.name}</div>
-                      <div className="card-dims">
-                        {item.width} × {item.depth} × {item.height} mm
-                      </div>
+                    <li key={item.sku}>
+                      <button
+                        type="button"
+                        className={`catalog-card ${placingSku === item.sku ? "placing" : ""}`}
+                        onClick={() => pick(item.sku)}
+                        title={`${item.width} × ${item.depth} × ${item.height} mm — click para colocar`}
+                      >
+                        <div className="card-top">
+                          <span className="card-sku">{item.sku}</span>
+                          <span className="card-price">{item.price} €</span>
+                        </div>
+                        <div className="card-name">{item.name}</div>
+                        <div className="card-dims">
+                          {item.width} × {item.depth} × {item.height} mm
+                        </div>
+                      </button>
                     </li>
                   ))}
                 </ul>

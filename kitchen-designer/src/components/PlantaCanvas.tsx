@@ -7,7 +7,6 @@ import { getCatalogItem } from "../kitchen/catalog";
 import { nearestWall, wallDirection, wallInteriorNormal, wallLength } from "../kitchen/validation";
 import type { ModulePlacement, Obstacle, Vec2, Wall } from "../kitchen/types";
 import { setStage } from "../lib/stageRef";
-import { getDraggingSku } from "../lib/dragSku";
 
 interface ViewTransform {
   scale: number; // px por mm
@@ -15,8 +14,9 @@ interface ViewTransform {
   offsetY: number;
 }
 
-// El snap está siempre activo (snap al muro más cercano) salvo que se sostenga
-// Shift al soltar — en ese caso el módulo se coloca como isla libre.
+// Modo de colocación click-to-place: se elige un SKU en el catálogo (store
+// .placingSku) y luego se hace click en la planta. El módulo se ancla al
+// muro más cercano al cursor; Shift+click para colocar como isla libre.
 
 function computeFit(width: number, height: number, walls: Wall[]): ViewTransform {
   if (walls.length === 0 || width === 0 || height === 0) {
@@ -212,12 +212,6 @@ export function PlantaCanvas() {
 
   const containerRef = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ width: 0, height: 0 });
-  const [dropPreview, setDropPreview] = useState<{
-    world: Vec2;
-    wallId: string | null;
-    offset: number;
-    sku: string;
-  } | null>(null);
   const [cursorWorld, setCursorWorld] = useState<Vec2 | null>(null);
   const [shiftHeld, setShiftHeld] = useState(false);
 
@@ -236,33 +230,6 @@ export function PlantaCanvas() {
     () => computeFit(size.width, size.height, project.room.walls),
     [size.width, size.height, project.room.walls],
   );
-
-  function getDropWorld(e: React.DragEvent<HTMLDivElement>): Vec2 {
-    const rect = containerRef.current!.getBoundingClientRect();
-    return toWorld({ x: e.clientX - rect.left, y: e.clientY - rect.top }, transform);
-  }
-
-  function handleDragOver(e: React.DragEvent<HTMLDivElement>) {
-    if (!e.dataTransfer.types.includes("application/x-kitchen-sku")) return;
-    e.preventDefault();
-    e.dataTransfer.dropEffect = "copy";
-    const sku = getDraggingSku() ?? "";
-    const item = getCatalogItem(sku);
-    const world = getDropWorld(e);
-    const snap = nearestWall(world, project.room.walls);
-    if (snap && !e.shiftKey) {
-      const len = wallLength(snap.wall);
-      const widthForOffset = item?.width ?? 0;
-      const off = Math.max(0, Math.min(Math.max(0, len - widthForOffset), snap.offset - widthForOffset / 2));
-      setDropPreview({ world, wallId: snap.wall.id, offset: off, sku });
-    } else {
-      setDropPreview({ world, wallId: null, offset: 0, sku });
-    }
-  }
-
-  function handleDragLeave() {
-    setDropPreview(null);
-  }
 
   function handleMouseMove(e: React.MouseEvent<HTMLDivElement>) {
     if (!placingSku) {
@@ -327,37 +294,6 @@ export function PlantaCanvas() {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [placingSku, setPlacingSku]);
-
-  function handleDrop(e: React.DragEvent<HTMLDivElement>) {
-    e.preventDefault();
-    const sku = e.dataTransfer.getData("application/x-kitchen-sku");
-    setDropPreview(null);
-    if (!sku) return;
-    const item = getCatalogItem(sku);
-    if (!item) return;
-
-    const world = getDropWorld(e);
-    const snap = nearestWall(world, project.room.walls);
-
-    if (snap && !e.shiftKey) {
-      const len = wallLength(snap.wall);
-      const off = Math.max(0, Math.min(len - item.width, snap.offset - item.width / 2));
-      const id = actions.addModule({
-        sku,
-        wallId: snap.wall.id,
-        offsetFromStart: off,
-        rotation: 0,
-      });
-      setSelection({ kind: "module", id });
-    } else {
-      const id = actions.addModule({
-        sku,
-        position: world,
-        rotation: 0,
-      });
-      setSelection({ kind: "module", id });
-    }
-  }
 
   // Borrar con tecla Supr/Backspace mientras el canvas está enfocado lógicamente.
   useEffect(() => {
@@ -433,31 +369,24 @@ export function PlantaCanvas() {
     polyPoints.push(first.x, first.y);
   }
 
-  // Preview unificado: prioridad al drag (HTML5) si está activo, si no usa el
-  // cursor del modo "click to place" cuando hay placingSku.
+  // Preview en vivo del módulo a colocar mientras el cursor está sobre la planta.
   const livePreview = (() => {
-    if (dropPreview) return dropPreview;
-    if (placingSku && cursorWorld) {
-      const item = getCatalogItem(placingSku);
-      const snap = nearestWall(cursorWorld, project.room.walls);
-      if (snap && !shiftHeld) {
-        const len = wallLength(snap.wall);
-        const w = item?.width ?? 0;
-        const off = Math.max(0, Math.min(Math.max(0, len - w), snap.offset - w / 2));
-        return { world: cursorWorld, wallId: snap.wall.id, offset: off, sku: placingSku };
-      }
-      return { world: cursorWorld, wallId: null, offset: 0, sku: placingSku };
+    if (!placingSku || !cursorWorld) return null;
+    const item = getCatalogItem(placingSku);
+    const snap = nearestWall(cursorWorld, project.room.walls);
+    if (snap && !shiftHeld) {
+      const len = wallLength(snap.wall);
+      const w = item?.width ?? 0;
+      const off = Math.max(0, Math.min(Math.max(0, len - w), snap.offset - w / 2));
+      return { world: cursorWorld, wallId: snap.wall.id, offset: off, sku: placingSku };
     }
-    return null;
+    return { world: cursorWorld, wallId: null, offset: 0, sku: placingSku };
   })();
 
   return (
     <div
       ref={containerRef}
       className={`planta-host ${placingSku ? "placing" : ""}`}
-      onDragOver={handleDragOver}
-      onDragLeave={handleDragLeave}
-      onDrop={handleDrop}
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
       onClick={handleHostClick}
@@ -465,7 +394,7 @@ export function PlantaCanvas() {
       <div className="planta-hint">
         {placingSku
           ? <>Click en la planta para colocar <strong>{placingSku}</strong> · <kbd>Shift</kbd>+click = isla libre · <kbd>Esc</kbd> cancela</>
-          : <>Click en una card del catálogo y luego en la planta para colocar · o arrastra · <kbd>Shift</kbd> = isla libre</>}
+          : <>Click en una card del catálogo a la izquierda, luego click en la planta donde quieras el módulo.</>}
       </div>
       {size.width > 0 && size.height > 0 && (
         <Stage ref={stageRef} width={size.width} height={size.height} onMouseDown={handleStageClick} onTouchStart={handleStageClick}>
