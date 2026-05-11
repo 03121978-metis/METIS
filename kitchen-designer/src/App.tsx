@@ -1,10 +1,10 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import "./App.css";
 import { CatalogSidebar } from "./components/CatalogSidebar";
 import { MetricsSidebar } from "./components/MetricsSidebar";
 import { PlantaCanvas } from "./components/PlantaCanvas";
 import { Scene3D } from "./components/Scene3D";
-import { useProject, useStore } from "./store";
+import { useCanUndo, useProject, useStore } from "./store";
 import { exportProjectPdf } from "./lib/exportPdf";
 
 type TabKey = "planta" | "3d";
@@ -13,6 +13,23 @@ function Topbar() {
   const project = useProject();
   const rename = useStore((s) => s.actions.renameProject);
   const reset = useStore((s) => s.actions.resetProject);
+  const undo = useStore((s) => s.actions.undo);
+  const canUndo = useCanUndo();
+
+  // Atajo de teclado Ctrl/Cmd+Z para deshacer.
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      const target = e.target as HTMLElement | null;
+      if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA")) return;
+      if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key.toLowerCase() === "z") {
+        e.preventDefault();
+        undo();
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [undo]);
+
   return (
     <header className="topbar">
       <div className="brand">
@@ -25,6 +42,14 @@ function Topbar() {
         onChange={(e) => rename(e.target.value)}
         spellCheck={false}
       />
+      <button
+        className="btn-ghost"
+        onClick={() => undo()}
+        disabled={!canUndo}
+        title="Deshacer último cambio (Ctrl/Cmd+Z)"
+      >
+        ↶ Deshacer
+      </button>
       <button
         className="btn-primary"
         onClick={() => exportProjectPdf(project)}

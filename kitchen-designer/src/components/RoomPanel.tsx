@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { useProject, useStore } from "../store";
 import { wallLength } from "../kitchen/validation";
-import { autoFillWallPlan } from "../lib/autoFill";
 
 function bboxOf(walls: { start: { x: number; y: number }; end: { x: number; y: number } }[]) {
   const xs = walls.flatMap((w) => [w.start.x, w.end.x]);
@@ -67,13 +66,6 @@ export function RoomPanel() {
     setSelection({ kind: "opening", id });
   }
 
-  function autoFillWall(wallId: string) {
-    const wall = project.room.walls.find((w) => w.id === wallId);
-    if (!wall) return;
-    const placements = autoFillWallPlan(wall, project.room.openings);
-    for (const p of placements) actions.addModule(p);
-  }
-
   return (
     <>
       <div className="sidebar-header">
@@ -125,16 +117,6 @@ export function RoomPanel() {
         <div className="room-add">
           <button type="button" onClick={addDoor}>+ Puerta</button>
           <button type="button" onClick={addWindow}>+ Ventana</button>
-        </div>
-        <div className="room-fill">
-          <span className="room-fill-label">Auto-rellenar muro</span>
-          <div className="room-fill-buttons">
-            {project.room.walls.map((w, i) => (
-              <button key={w.id} type="button" onClick={() => autoFillWall(w.id)} title={`${Math.round(wallLength(w))} mm`}>
-                M{i + 1}
-              </button>
-            ))}
-          </div>
         </div>
       </div>
     </>
