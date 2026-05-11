@@ -7,6 +7,7 @@ import { getCatalogItem } from "../kitchen/catalog";
 import { nearestWall, wallDirection, wallInteriorNormal, wallLength } from "../kitchen/validation";
 import type { ModulePlacement, Obstacle, Vec2, Wall } from "../kitchen/types";
 import { setStage } from "../lib/stageRef";
+import { getDraggingSku } from "../lib/dragSku";
 
 interface ViewTransform {
   scale: number; // px por mm
@@ -14,7 +15,7 @@ interface ViewTransform {
   offsetY: number;
 }
 
-const SNAP_TOLERANCE_MM = 250;
+const SNAP_TOLERANCE_MM = 400;
 
 function computeFit(width: number, height: number, walls: Wall[]): ViewTransform {
   if (walls.length === 0 || width === 0 || height === 0) {
@@ -208,7 +209,12 @@ export function PlantaCanvas() {
 
   const containerRef = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ width: 0, height: 0 });
-  const [dropPreview, setDropPreview] = useState<{ p: Vec2; wallId: string | null } | null>(null);
+  const [dropPreview, setDropPreview] = useState<{
+    world: Vec2;
+    wallId: string | null;
+    offset: number;
+    sku: string;
+  } | null>(null);
 
   useEffect(() => {
     const el = containerRef.current;
@@ -235,12 +241,17 @@ export function PlantaCanvas() {
     if (!e.dataTransfer.types.includes("application/x-kitchen-sku")) return;
     e.preventDefault();
     e.dataTransfer.dropEffect = "copy";
+    const sku = getDraggingSku() ?? "";
+    const item = getCatalogItem(sku);
     const world = getDropWorld(e);
     const snap = nearestWall(world, project.room.walls);
     if (snap && snap.distance <= SNAP_TOLERANCE_MM) {
-      setDropPreview({ p: snap.foot, wallId: snap.wall.id });
+      const len = wallLength(snap.wall);
+      const widthForOffset = item?.width ?? 0;
+      const off = Math.max(0, Math.min(Math.max(0, len - widthForOffset), snap.offset - widthForOffset / 2));
+      setDropPreview({ world, wallId: snap.wall.id, offset: off, sku });
     } else {
-      setDropPreview({ p: world, wallId: null });
+      setDropPreview({ world, wallId: null, offset: 0, sku });
     }
   }
 
@@ -440,13 +451,75 @@ export function PlantaCanvas() {
             })}
             {/* Preview de drop */}
             {dropPreview && (() => {
-              const p = toScreen(dropPreview.p, transform);
+              const item = getCatalogItem(dropPreview.sku);
+              if (!item) {
+                // SKU desconocido (drag externo): solo un círculo de referencia.
+                const p = toScreen(dropPreview.world, transform);
+                return (
+                  <Circle
+                    x={p.x}
+                    y={p.y}
+                    radius={10}
+                    stroke="#bbbbbb"
+                    strokeWidth={2}
+                    dash={[6, 4]}
+                    listening={false}
+                  />
+                );
+              }
+              if (dropPreview.wallId) {
+                const wall = project.room.walls.find((w) => w.id === dropPreview.wallId);
+                if (!wall) return null;
+                const dir = wallDirection(wall);
+                const normal = wallInteriorNormal(wall);
+                const innerOff = wall.thickness / 2;
+                const anchorWorld = {
+                  x: wall.start.x + dir.x * dropPreview.offset + normal.x * innerOff,
+                  y: wall.start.y + dir.y * dropPreview.offset + normal.y * innerOff,
+                };
+                const p = toScreen(anchorWorld, transform);
+                const angleDeg = (Math.atan2(dir.y, dir.x) * 180) / Math.PI;
+                const wallA = toScreen(wall.start, transform);
+                const wallB = toScreen(wall.end, transform);
+                return (
+                  <>
+                    <Line
+                      points={[wallA.x, wallA.y, wallB.x, wallB.y]}
+                      stroke="#1f6feb"
+                      strokeWidth={Math.max(4, wall.thickness * transform.scale)}
+                      opacity={0.35}
+                      lineCap="round"
+                      listening={false}
+                    />
+                    <Group x={p.x} y={p.y} rotation={angleDeg} listening={false}>
+                      <Rect
+                        x={0}
+                        y={0}
+                        width={item.width * transform.scale}
+                        height={item.depth * transform.scale}
+                        fill="#1f6feb"
+                        opacity={0.18}
+                        stroke="#1f6feb"
+                        strokeWidth={2}
+                        dash={[6, 4]}
+                      />
+                    </Group>
+                  </>
+                );
+              }
+              // Drop libre: rect centrado en el cursor sin orientación
+              const p = toScreen(dropPreview.world, transform);
+              const w = item.width * transform.scale;
+              const d = item.depth * transform.scale;
               return (
-                <Circle
-                  x={p.x}
-                  y={p.y}
-                  radius={10}
-                  stroke={dropPreview.wallId ? "#1f6feb" : "#bbbbbb"}
+                <Rect
+                  x={p.x - w / 2}
+                  y={p.y - d / 2}
+                  width={w}
+                  height={d}
+                  fill="#888"
+                  opacity={0.18}
+                  stroke="#888"
                   strokeWidth={2}
                   dash={[6, 4]}
                   listening={false}

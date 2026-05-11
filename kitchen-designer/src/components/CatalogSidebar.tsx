@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { CATALOG, FAMILY_LABEL, FAMILY_ORDER, groupByFamily } from "../kitchen/catalog";
 import type { CatalogItem, Family } from "../kitchen/types";
+import { setDraggingSku } from "../lib/dragSku";
 
 interface Props {
   onDragStartItem?: (item: CatalogItem) => void;
@@ -50,8 +51,10 @@ export function CatalogSidebar({ onDragStartItem }: Props) {
                       onDragStart={(e) => {
                         e.dataTransfer.setData("application/x-kitchen-sku", item.sku);
                         e.dataTransfer.effectAllowed = "copy";
+                        setDraggingSku(item.sku);
                         onDragStartItem?.(item);
                       }}
+                      onDragEnd={() => setDraggingSku(null)}
                       title={`${item.width} × ${item.depth} × ${item.height} mm`}
                     >
                       <div className="card-top">
