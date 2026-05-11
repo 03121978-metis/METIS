@@ -3,7 +3,7 @@ import { OrbitControls, Grid } from "@react-three/drei";
 import { Suspense } from "react";
 import { useProject } from "../store";
 import { getCatalogItem } from "../kitchen/catalog";
-import { wallDirection, wallLength } from "../kitchen/validation";
+import { wallDirection, wallInteriorNormal, wallLength } from "../kitchen/validation";
 import type { ModulePlacement, Wall } from "../kitchen/types";
 
 const MM = 0.001; // 1 mm en metros (Three.js usa metros por convención)
@@ -45,12 +45,15 @@ function ModuleMesh({ placement }: { placement: ModulePlacement }) {
   const wall = project.room.walls.find((w) => w.id === placement.wallId);
   if (!wall) return null;
   const dir = wallDirection(wall);
-  const normal = { x: dir.y, y: -dir.x }; // hacia el interior (asumiendo polígono horario)
+  const normal = wallInteriorNormal(wall);
   const off = (placement.offsetFromStart + item.width / 2) * MM;
+  const innerOff = (wall.thickness / 2) * MM;
   const dep = (item.depth / 2) * MM;
 
-  const cx = wall.start.x * MM + dir.x * off + normal.x * dep;
-  const cz = wall.start.y * MM + dir.y * off + normal.y * dep;
+  // Centro del módulo: desplazado a lo largo del muro (off) y desde su eje
+  // hacia el interior (innerOff = cara interior + dep/2 = centro del módulo).
+  const cx = wall.start.x * MM + dir.x * off + normal.x * (innerOff + dep);
+  const cz = wall.start.y * MM + dir.y * off + normal.y * (innerOff + dep);
   const ang = Math.atan2(wall.end.y - wall.start.y, wall.end.x - wall.start.x);
   const mountBottom = (item.mountHeight ?? 0) * MM;
   const h = item.height * MM;

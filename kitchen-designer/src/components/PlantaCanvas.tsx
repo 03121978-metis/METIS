@@ -4,7 +4,7 @@ import type Konva from "konva";
 import type { KonvaEventObject } from "konva/lib/Node";
 import { useProject, useActions, useStore } from "../store";
 import { getCatalogItem } from "../kitchen/catalog";
-import { nearestWall, wallDirection, wallLength } from "../kitchen/validation";
+import { nearestWall, wallDirection, wallInteriorNormal, wallLength } from "../kitchen/validation";
 import type { ModulePlacement, Obstacle, Vec2, Wall } from "../kitchen/types";
 import { setStage } from "../lib/stageRef";
 
@@ -14,7 +14,7 @@ interface ViewTransform {
   offsetY: number;
 }
 
-const SNAP_TOLERANCE_MM = 600;
+const SNAP_TOLERANCE_MM = 250;
 
 function computeFit(width: number, height: number, walls: Wall[]): ViewTransform {
   if (walls.length === 0 || width === 0 || height === 0) {
@@ -61,9 +61,11 @@ function ModuleView({ placement, transform, wall, selected, onSelect, onDragEnd 
   let angleDeg: number;
   if (wall && placement.offsetFromStart !== undefined) {
     const dir = wallDirection(wall);
+    const normal = wallInteriorNormal(wall);
+    const innerOff = wall.thickness / 2;
     anchor = {
-      x: wall.start.x + dir.x * placement.offsetFromStart,
-      y: wall.start.y + dir.y * placement.offsetFromStart,
+      x: wall.start.x + dir.x * placement.offsetFromStart + normal.x * innerOff,
+      y: wall.start.y + dir.y * placement.offsetFromStart + normal.y * innerOff,
     };
     angleDeg = (Math.atan2(dir.y, dir.x) * 180) / Math.PI;
   } else if (placement.position) {

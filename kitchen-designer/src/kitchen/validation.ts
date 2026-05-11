@@ -47,7 +47,17 @@ export function nearestWall(p: Vec2, walls: Wall[]): { wall: Wall; offset: numbe
   return best;
 }
 
-/** AABB de un módulo en planta (mm). Devuelve null si no se puede ubicar. */
+/** Normal hacia el INTERIOR de la habitación para un muro de un polígono
+ *  recorrido en sentido horario (en coordenadas de planta con Y hacia abajo).
+ *  Para dir=(1,0) → (0,1), para dir=(0,1) → (-1,0), etc. */
+export function wallInteriorNormal(w: Wall): Vec2 {
+  const dir = wallDirection(w);
+  return { x: -dir.y, y: dir.x };
+}
+
+/** AABB de un módulo en planta (mm). Devuelve null si no se puede ubicar.
+ *  Los módulos anclados a muro se sitúan contra la cara interior del muro
+ *  (desplazados thickness/2 desde el eje del muro hacia el interior). */
 export function moduleAabb(
   placement: ModulePlacement,
   walls: Wall[],
@@ -61,11 +71,11 @@ export function moduleAabb(
     const wall = walls.find((w) => w.id === placement.wallId);
     if (!wall) return null;
     dir = wallDirection(wall);
-    // Normal hacia el interior (polígono horario): rotación -90°.
-    normal = { x: dir.y, y: -dir.x };
+    normal = wallInteriorNormal(wall);
+    const innerOff = wall.thickness / 2;
     anchor = {
-      x: wall.start.x + dir.x * placement.offsetFromStart,
-      y: wall.start.y + dir.y * placement.offsetFromStart,
+      x: wall.start.x + dir.x * placement.offsetFromStart + normal.x * innerOff,
+      y: wall.start.y + dir.y * placement.offsetFromStart + normal.y * innerOff,
     };
   } else if (placement.position) {
     const rot = placement.rotation || 0;
