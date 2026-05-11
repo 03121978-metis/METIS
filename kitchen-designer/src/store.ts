@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { persist, createJSONStorage } from "zustand/middleware";
 import type {
   ModulePlacement,
   Obstacle,
@@ -89,7 +90,9 @@ function snapshot(s: StoreState): Pick<StoreState, "history"> {
   return { history: next };
 }
 
-export const useStore = create<StoreState>((set) => ({
+export const useStore = create<StoreState>()(
+  persist(
+    (set) => ({
   project: emptyProject(),
   history: [],
   selection: null,
@@ -256,7 +259,17 @@ export const useStore = create<StoreState>((set) => ({
         };
       }),
   },
-}));
+}),
+    {
+      name: "kitchen-designer-david-h-v1",
+      storage: createJSONStorage(() => localStorage),
+      // Sólo persistimos el proyecto. Historial, selección y modo colocación
+      // son estado de sesión.
+      partialize: (s) => ({ project: s.project }),
+      version: 1,
+    },
+  ),
+);
 
 // Helper que evita re-renderizar componentes que sólo necesitan acciones.
 export const useActions = (): ProjectActions => useStore((s) => s.actions);

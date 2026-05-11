@@ -4,14 +4,33 @@ import type { Family } from "../kitchen/types";
 import { useStore } from "../store";
 
 export function CatalogSidebar() {
-  const grouped = useMemo(() => groupByFamily(CATALOG), []);
   const placingSku = useStore((s) => s.placingSku);
   const setPlacingSku = useStore((s) => s.setPlacingSku);
+  const [query, setQuery] = useState("");
   const [open, setOpen] = useState<Record<Family, boolean>>(() => {
     const o = {} as Record<Family, boolean>;
     for (const f of FAMILY_ORDER) o[f] = f === "base";
     return o;
   });
+
+  const filtered = useMemo(() => {
+    if (!query.trim()) return CATALOG;
+    const q = query.toLowerCase();
+    return CATALOG.filter(
+      (item) =>
+        item.sku.toLowerCase().includes(q) ||
+        item.name.toLowerCase().includes(q),
+    );
+  }, [query]);
+  const grouped = useMemo(() => groupByFamily(filtered), [filtered]);
+
+  // Si hay búsqueda activa, abrir todas las familias con coincidencias.
+  const effectiveOpen = useMemo(() => {
+    if (!query.trim()) return open;
+    const o = { ...open };
+    for (const f of FAMILY_ORDER) o[f] = (grouped[f]?.length ?? 0) > 0;
+    return o;
+  }, [open, grouped, query]);
 
   function toggle(f: Family) {
     setOpen((prev) => ({ ...prev, [f]: !prev[f] }));
@@ -25,13 +44,21 @@ export function CatalogSidebar() {
     <aside className="sidebar sidebar-left">
       <div className="sidebar-header">
         <h2>Catálogo</h2>
-        <small>{CATALOG.length} SKUs</small>
+        <small>{filtered.length} / {CATALOG.length}</small>
+      </div>
+      <div className="catalog-search">
+        <input
+          type="search"
+          placeholder="Buscar SKU o nombre…"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+        />
       </div>
       <div className="catalog">
         {FAMILY_ORDER.map((family) => {
           const items = grouped[family];
           if (!items || items.length === 0) return null;
-          const isOpen = open[family];
+          const isOpen = effectiveOpen[family];
           return (
             <section key={family} className="catalog-family">
               <button

@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Stage, Layer, Line, Rect, Group, Text, Circle } from "react-konva";
+import { Stage, Layer, Line, Rect, Group, Text, Circle, Arc } from "react-konva";
 import type Konva from "konva";
 import type { KonvaEventObject } from "konva/lib/Node";
 import { useProject, useActions, useStore } from "../store";
+import type { Selection } from "../store";
 import { getCatalogItem } from "../kitchen/catalog";
 import { nearestWall, wallDirection, wallInteriorNormal, wallLength } from "../kitchen/validation";
 import type { ModulePlacement, Obstacle, Vec2, Wall } from "../kitchen/types";
@@ -214,6 +215,18 @@ export function PlantaCanvas() {
   const [size, setSize] = useState({ width: 0, height: 0 });
   const [cursorWorld, setCursorWorld] = useState<Vec2 | null>(null);
   const [shiftHeld, setShiftHeld] = useState(false);
+  /** Konva onClick en una shape se dispara antes que el onClick HTML del
+   *  contenedor. Usamos un ref para que el host se entere de que el click
+   *  ya tuvo dueño y no coloque un módulo nuevo encima. */
+  const swallowHostClickRef = useRef(false);
+
+  /** Llamado por las shapes de Konva al ser clicadas. Selecciona y, si
+   *  estábamos colocando, sale del modo colocación. */
+  function selectShape(sel: Selection) {
+    swallowHostClickRef.current = true;
+    setSelection(sel);
+    if (placingSku) setPlacingSku(null);
+  }
 
   useEffect(() => {
     const el = containerRef.current;
@@ -246,6 +259,41 @@ export function PlantaCanvas() {
     setCursorWorld(null);
   }
 
+  /** Ajusta `off` para que el borde del módulo se pegue al de un vecino del
+   *  mismo muro si está dentro de la tolerancia (150 mm). Devuelve el nuevo
+   *  offset o el original si no hay vecino cercano. */
+  function snapToNeighbours(wallId: string, off: number, width: number): number {
+    const SNAP = 150; // mm
+    const len = wallLength(project.room.walls.find((w) => w.id === wallId)!);
+    const neighbours = project.modules
+      .filter((m) => m.wallId === wallId && m.offsetFromStart !== undefined)
+      .map((m) => {
+        const it = getCatalogItem(m.sku);
+        if (!it) return null;
+        return { start: m.offsetFromStart!, end: m.offsetFromStart! + it.width };
+      })
+      .filter((x): x is { start: number; end: number } => x !== null)
+      .sort((a, b) => a.start - b.start);
+
+    // Candidatos a pegar: extremos del muro y bordes de vecinos.
+    const candidates: number[] = [0, len - width];
+    for (const n of neighbours) {
+      candidates.push(n.end);             // mi izquierda contra su derecha
+      candidates.push(n.start - width);   // mi derecha contra su izquierda
+    }
+    let bestOff = off;
+    let bestDist = SNAP;
+    for (const c of candidates) {
+      if (c < 0 || c > len - width) continue;
+      const d = Math.abs(c - off);
+      if (d < bestDist) {
+        bestDist = d;
+        bestOff = c;
+      }
+    }
+    return bestOff;
+  }
+
   function placeAtCursor(world: Vec2, useFreeIsland: boolean) {
     if (!placingSku) return;
     const item = getCatalogItem(placingSku);
@@ -253,7 +301,8 @@ export function PlantaCanvas() {
     const snap = nearestWall(world, project.room.walls);
     if (snap && !useFreeIsland) {
       const len = wallLength(snap.wall);
-      const off = Math.max(0, Math.min(len - item.width, snap.offset - item.width / 2));
+      let off = Math.max(0, Math.min(len - item.width, snap.offset - item.width / 2));
+      off = snapToNeighbours(snap.wall.id, off, item.width);
       const id = actions.addModule({
         sku: placingSku,
         wallId: snap.wall.id,
@@ -269,12 +318,15 @@ export function PlantaCanvas() {
       });
       setSelection({ kind: "module", id });
     }
-    // Salimos del modo colocación tras un placement.
-    setPlacingSku(null);
-    setCursorWorld(null);
+    // Modo multi-place: NO salimos del modo. Esc o click sobre la card para
+    // terminar.
   }
 
   function handleHostClick(e: React.MouseEvent<HTMLDivElement>) {
+    if (swallowHostClickRef.current) {
+      swallowHostClickRef.current = false;
+      return;
+    }
     if (!placingSku) return;
     if (e.button !== 0) return;
     const rect = containerRef.current!.getBoundingClientRect();
@@ -445,6 +497,7 @@ export function PlantaCanvas() {
               const wall = project.room.walls.find((w) => w.id === op.wallId);
               if (!wall) return null;
               const dir = wallDirection(wall);
+              const normal = wallInteriorNormal(wall);
               const a = {
                 x: wall.start.x + dir.x * op.offsetFromStart,
                 y: wall.start.y + dir.y * op.offsetFromStart,
@@ -456,20 +509,71 @@ export function PlantaCanvas() {
               const pa = toScreen(a, transform);
               const pb = toScreen(b, transform);
               const isSel = selection?.kind === "opening" && selection.id === op.id;
+              const isDoor = op.kind === "door";
+              // Arco de barrido para puertas: cuarto de círculo desde la
+              // bisagra (extremo "a") apuntando hacia el interior, radio =
+              // ancho del hueco.
+              const dirAngleDeg = (Math.atan2(dir.y, dir.x) * 180) / Math.PI;
+              const normalAngleDeg = (Math.atan2(normal.y, normal.x) * 180) / Math.PI;
+              // El Arc de Konva empieza en angle 0 (eje +x) y barre `angle` grados.
+              // Queremos que empiece en la dirección del muro y barra hacia el interior.
+              // Si la rotación del normal está a -90° de la dirección, hacemos angle=-90
+              // y rotation=dirAngle; si está a +90°, angle=90 y rotation=dirAngle.
+              const delta = ((normalAngleDeg - dirAngleDeg + 540) % 360) - 180; // signed
+              const sweep = delta > 0 ? 90 : -90;
               return (
-                <Line
-                  key={op.id}
-                  points={[pa.x, pa.y, pb.x, pb.y]}
-                  stroke={op.kind === "door" ? "#8e6b3a" : "#5a9fd6"}
-                  strokeWidth={Math.max(6, wall.thickness * transform.scale + 2)}
-                  shadowEnabled={isSel}
-                  shadowColor="#1f6feb"
-                  shadowBlur={isSel ? 10 : 0}
-                  lineCap="butt"
-                  hitStrokeWidth={20}
-                  onClick={() => setSelection({ kind: "opening", id: op.id })}
-                  onTap={() => setSelection({ kind: "opening", id: op.id })}
-                />
+                <Group key={op.id}>
+                  <Line
+                    points={[pa.x, pa.y, pb.x, pb.y]}
+                    stroke={isDoor ? "#8e6b3a" : "#5a9fd6"}
+                    strokeWidth={Math.max(6, wall.thickness * transform.scale + 2)}
+                    shadowEnabled={isSel}
+                    shadowColor="#1f6feb"
+                    shadowBlur={isSel ? 10 : 0}
+                    lineCap="butt"
+                    hitStrokeWidth={20}
+                    onClick={() => selectShape({ kind: "opening", id: op.id })}
+                    onTap={() => selectShape({ kind: "opening", id: op.id })}
+                  />
+                  {isDoor && (
+                    <>
+                      <Arc
+                        x={pa.x}
+                        y={pa.y}
+                        innerRadius={0}
+                        outerRadius={op.width * transform.scale}
+                        angle={sweep}
+                        rotation={dirAngleDeg}
+                        stroke="#8e6b3a"
+                        strokeWidth={1}
+                        dash={[4, 4]}
+                        opacity={0.7}
+                        listening={false}
+                      />
+                      <Line
+                        points={[
+                          pa.x,
+                          pa.y,
+                          pa.x + dir.x * op.width * transform.scale,
+                          pa.y + dir.y * op.width * transform.scale,
+                        ]}
+                        stroke="#8e6b3a"
+                        strokeWidth={1}
+                        opacity={0.7}
+                        listening={false}
+                      />
+                    </>
+                  )}
+                  {!isDoor && (
+                    <Line
+                      points={[pa.x, pa.y, pb.x, pb.y]}
+                      stroke="#fff"
+                      strokeWidth={Math.max(2, wall.thickness * transform.scale * 0.4)}
+                      lineCap="butt"
+                      listening={false}
+                    />
+                  )}
+                </Group>
               );
             })}
             {/* Obstáculos */}
@@ -479,7 +583,7 @@ export function PlantaCanvas() {
                 obstacle={o}
                 transform={transform}
                 selected={selection?.kind === "obstacle" && selection.id === o.id}
-                onSelect={() => setSelection({ kind: "obstacle", id: o.id })}
+                onSelect={() => selectShape({ kind: "obstacle", id: o.id })}
                 onDragEnd={(newPos) => actions.updateObstacle(o.id, { position: newPos })}
               />
             ))}
@@ -493,7 +597,7 @@ export function PlantaCanvas() {
                   transform={transform}
                   wall={wall}
                   selected={selection?.kind === "module" && selection.id === m.id}
-                  onSelect={() => setSelection({ kind: "module", id: m.id })}
+                  onSelect={() => selectShape({ kind: "module", id: m.id })}
                   onDragEnd={(delta) => moveModuleByDelta(m, delta)}
                 />
               );
