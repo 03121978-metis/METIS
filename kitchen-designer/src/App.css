@@ -168,6 +168,19 @@
   background: var(--panel-alt);
 }
 .catalog-card:active { cursor: grabbing; }
+.catalog-card.placing {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-soft);
+}
+.catalog-card.placing::after {
+  content: "→ click en la planta";
+  display: block;
+  font-size: 10px;
+  color: var(--accent);
+  font-weight: 500;
+  margin-top: 4px;
+}
 .card-top {
   display: flex;
   justify-content: space-between;
@@ -226,6 +239,9 @@
     linear-gradient(to right, rgba(0, 0, 0, 0.04) 1px, transparent 1px) 0 0 / 20px 20px,
     linear-gradient(to bottom, rgba(0, 0, 0, 0.04) 1px, transparent 1px) 0 0 / 20px 20px,
     var(--bg);
+}
+.planta-host.placing {
+  cursor: crosshair;
 }
 .planta-hint {
   position: absolute;

@@ -207,6 +207,8 @@ export function PlantaCanvas() {
   const actions = useActions();
   const selection = useStore((s) => s.selection);
   const setSelection = useStore((s) => s.setSelection);
+  const placingSku = useStore((s) => s.placingSku);
+  const setPlacingSku = useStore((s) => s.setPlacingSku);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ width: 0, height: 0 });
@@ -216,6 +218,8 @@ export function PlantaCanvas() {
     offset: number;
     sku: string;
   } | null>(null);
+  const [cursorWorld, setCursorWorld] = useState<Vec2 | null>(null);
+  const [shiftHeld, setShiftHeld] = useState(false);
 
   useEffect(() => {
     const el = containerRef.current;
@@ -259,6 +263,70 @@ export function PlantaCanvas() {
   function handleDragLeave() {
     setDropPreview(null);
   }
+
+  function handleMouseMove(e: React.MouseEvent<HTMLDivElement>) {
+    if (!placingSku) {
+      if (cursorWorld) setCursorWorld(null);
+      return;
+    }
+    const rect = containerRef.current!.getBoundingClientRect();
+    const screen = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+    setCursorWorld(toWorld(screen, transform));
+    setShiftHeld(e.shiftKey);
+  }
+
+  function handleMouseLeave() {
+    setCursorWorld(null);
+  }
+
+  function placeAtCursor(world: Vec2, useFreeIsland: boolean) {
+    if (!placingSku) return;
+    const item = getCatalogItem(placingSku);
+    if (!item) return;
+    const snap = nearestWall(world, project.room.walls);
+    if (snap && !useFreeIsland) {
+      const len = wallLength(snap.wall);
+      const off = Math.max(0, Math.min(len - item.width, snap.offset - item.width / 2));
+      const id = actions.addModule({
+        sku: placingSku,
+        wallId: snap.wall.id,
+        offsetFromStart: off,
+        rotation: 0,
+      });
+      setSelection({ kind: "module", id });
+    } else {
+      const id = actions.addModule({
+        sku: placingSku,
+        position: world,
+        rotation: 0,
+      });
+      setSelection({ kind: "module", id });
+    }
+    // Salimos del modo colocación tras un placement.
+    setPlacingSku(null);
+    setCursorWorld(null);
+  }
+
+  function handleHostClick(e: React.MouseEvent<HTMLDivElement>) {
+    if (!placingSku) return;
+    if (e.button !== 0) return;
+    const rect = containerRef.current!.getBoundingClientRect();
+    const world = toWorld({ x: e.clientX - rect.left, y: e.clientY - rect.top }, transform);
+    placeAtCursor(world, e.shiftKey);
+  }
+
+  // Esc cancela el modo colocación.
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape" && placingSku) {
+        e.preventDefault();
+        setPlacingSku(null);
+        setCursorWorld(null);
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [placingSku, setPlacingSku]);
 
   function handleDrop(e: React.DragEvent<HTMLDivElement>) {
     e.preventDefault();
@@ -365,17 +433,39 @@ export function PlantaCanvas() {
     polyPoints.push(first.x, first.y);
   }
 
+  // Preview unificado: prioridad al drag (HTML5) si está activo, si no usa el
+  // cursor del modo "click to place" cuando hay placingSku.
+  const livePreview = (() => {
+    if (dropPreview) return dropPreview;
+    if (placingSku && cursorWorld) {
+      const item = getCatalogItem(placingSku);
+      const snap = nearestWall(cursorWorld, project.room.walls);
+      if (snap && !shiftHeld) {
+        const len = wallLength(snap.wall);
+        const w = item?.width ?? 0;
+        const off = Math.max(0, Math.min(Math.max(0, len - w), snap.offset - w / 2));
+        return { world: cursorWorld, wallId: snap.wall.id, offset: off, sku: placingSku };
+      }
+      return { world: cursorWorld, wallId: null, offset: 0, sku: placingSku };
+    }
+    return null;
+  })();
+
   return (
     <div
       ref={containerRef}
-      className="planta-host"
+      className={`planta-host ${placingSku ? "placing" : ""}`}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
+      onMouseMove={handleMouseMove}
+      onMouseLeave={handleMouseLeave}
+      onClick={handleHostClick}
     >
       <div className="planta-hint">
-        Arrastra desde el catálogo · el módulo va al muro más cercano · mantén
-        {" "}<kbd>Shift</kbd> al soltar para colocarlo como isla
+        {placingSku
+          ? <>Click en la planta para colocar <strong>{placingSku}</strong> · <kbd>Shift</kbd>+click = isla libre · <kbd>Esc</kbd> cancela</>
+          : <>Click en una card del catálogo y luego en la planta para colocar · o arrastra · <kbd>Shift</kbd> = isla libre</>}
       </div>
       {size.width > 0 && size.height > 0 && (
         <Stage ref={stageRef} width={size.width} height={size.height} onMouseDown={handleStageClick} onTouchStart={handleStageClick}>
@@ -456,12 +546,11 @@ export function PlantaCanvas() {
                 />
               );
             })}
-            {/* Preview de drop */}
-            {dropPreview && (() => {
-              const item = getCatalogItem(dropPreview.sku);
+            {/* Preview de colocación (drag o click-to-place) */}
+            {livePreview && (() => {
+              const item = getCatalogItem(livePreview.sku);
               if (!item) {
-                // SKU desconocido (drag externo): solo un círculo de referencia.
-                const p = toScreen(dropPreview.world, transform);
+                const p = toScreen(livePreview.world, transform);
                 return (
                   <Circle
                     x={p.x}
@@ -474,15 +563,15 @@ export function PlantaCanvas() {
                   />
                 );
               }
-              if (dropPreview.wallId) {
-                const wall = project.room.walls.find((w) => w.id === dropPreview.wallId);
+              if (livePreview.wallId) {
+                const wall = project.room.walls.find((w) => w.id === livePreview.wallId);
                 if (!wall) return null;
                 const dir = wallDirection(wall);
                 const normal = wallInteriorNormal(wall);
                 const innerOff = wall.thickness / 2;
                 const anchorWorld = {
-                  x: wall.start.x + dir.x * dropPreview.offset + normal.x * innerOff,
-                  y: wall.start.y + dir.y * dropPreview.offset + normal.y * innerOff,
+                  x: wall.start.x + dir.x * livePreview.offset + normal.x * innerOff,
+                  y: wall.start.y + dir.y * livePreview.offset + normal.y * innerOff,
                 };
                 const p = toScreen(anchorWorld, transform);
                 const angleDeg = (Math.atan2(dir.y, dir.x) * 180) / Math.PI;
@@ -514,8 +603,7 @@ export function PlantaCanvas() {
                   </>
                 );
               }
-              // Drop libre: rect centrado en el cursor sin orientación
-              const p = toScreen(dropPreview.world, transform);
+              const p = toScreen(livePreview.world, transform);
               const w = item.width * transform.scale;
               const d = item.depth * transform.scale;
               return (

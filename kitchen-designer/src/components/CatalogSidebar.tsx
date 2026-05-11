@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { CATALOG, FAMILY_LABEL, FAMILY_ORDER, groupByFamily } from "../kitchen/catalog";
 import type { CatalogItem, Family } from "../kitchen/types";
 import { setDraggingSku } from "../lib/dragSku";
+import { useStore } from "../store";
 
 interface Props {
   onDragStartItem?: (item: CatalogItem) => void;
@@ -9,6 +10,8 @@ interface Props {
 
 export function CatalogSidebar({ onDragStartItem }: Props) {
   const grouped = useMemo(() => groupByFamily(CATALOG), []);
+  const placingSku = useStore((s) => s.placingSku);
+  const setPlacingSku = useStore((s) => s.setPlacingSku);
   const [open, setOpen] = useState<Record<Family, boolean>>(() => {
     const o = {} as Record<Family, boolean>;
     for (const f of FAMILY_ORDER) o[f] = f === "base";
@@ -46,8 +49,9 @@ export function CatalogSidebar({ onDragStartItem }: Props) {
                   {items.map((item) => (
                     <li
                       key={item.sku}
-                      className="catalog-card"
+                      className={`catalog-card ${placingSku === item.sku ? "placing" : ""}`}
                       draggable
+                      onClick={() => setPlacingSku(placingSku === item.sku ? null : item.sku)}
                       onDragStart={(e) => {
                         e.dataTransfer.setData("application/x-kitchen-sku", item.sku);
                         e.dataTransfer.effectAllowed = "copy";
@@ -55,7 +59,7 @@ export function CatalogSidebar({ onDragStartItem }: Props) {
                         onDragStartItem?.(item);
                       }}
                       onDragEnd={() => setDraggingSku(null)}
-                      title={`${item.width} × ${item.depth} × ${item.height} mm`}
+                      title={`${item.width} × ${item.depth} × ${item.height} mm — click para colocar`}
                     >
                       <div className="card-top">
                         <span className="card-sku">{item.sku}</span>

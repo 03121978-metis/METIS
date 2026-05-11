@@ -72,6 +72,9 @@ export interface StoreState {
   history: Project[];
   selection: Selection;
   setSelection: (sel: Selection) => void;
+  /** SKU del catálogo seleccionado para colocar al hacer click en la planta. */
+  placingSku: string | null;
+  setPlacingSku: (sku: string | null) => void;
   actions: ProjectActions;
 }
 
@@ -91,6 +94,8 @@ export const useStore = create<StoreState>((set) => ({
   history: [],
   selection: null,
   setSelection: (sel) => set({ selection: sel }),
+  placingSku: null,
+  setPlacingSku: (sku) => set({ placingSku: sku }),
   actions: {
     addModule: (mod) => {
       const id = mod.id ?? makeId("mod");
