@@ -67,7 +67,8 @@ function ModuleView({ placement, transform, wall, selected, onSelect, onDragEnd 
       x: wall.start.x + dir.x * placement.offsetFromStart + normal.x * innerOff,
       y: wall.start.y + dir.y * placement.offsetFromStart + normal.y * innerOff,
     };
-    angleDeg = (Math.atan2(dir.y, dir.x) * 180) / Math.PI;
+    const wallAng = (Math.atan2(dir.y, dir.x) * 180) / Math.PI;
+    angleDeg = wallAng + ((placement.rotation || 0) * 180) / Math.PI;
   } else if (placement.position) {
     anchor = placement.position;
     angleDeg = (placement.rotation * 180) / Math.PI;
@@ -103,7 +104,6 @@ function ModuleView({ placement, transform, wall, selected, onSelect, onDragEnd 
         const dx = (newX - p.x) / transform.scale;
         const dy = (newY - p.y) / transform.scale;
         onDragEnd({ x: dx, y: dy });
-        // Konva keeps the new position; we'll re-render from updated store on next tick.
         e.target.position({ x: p.x, y: p.y });
       }}
     >
@@ -116,8 +116,20 @@ function ModuleView({ placement, transform, wall, selected, onSelect, onDragEnd 
         stroke={selected ? "#1f6feb" : "#3a3a3a"}
         strokeWidth={selected ? 2 : 1}
       />
+      {/* Triángulo indicando el frente del módulo (lado interior de la pared). */}
+      <Line
+        points={
+          placement.mirrored
+            ? [w * 0.75, 1, w * 0.25, 1, w / 2, Math.min(d * 0.3, 10)]
+            : [w * 0.25, 1, w * 0.75, 1, w / 2, Math.min(d * 0.3, 10)]
+        }
+        closed
+        fill={selected ? "#1f6feb" : "#444"}
+        opacity={0.5}
+        listening={false}
+      />
       {w > 36 && d > 18 && (
-        <Text x={4} y={4} text={item.sku} fontSize={11} fill="#222" />
+        <Text x={4} y={Math.min(14, d - 14)} text={item.sku} fontSize={11} fill="#222" listening={false} />
       )}
     </Group>
   );

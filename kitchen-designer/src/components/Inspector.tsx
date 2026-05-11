@@ -92,6 +92,26 @@ export function Inspector() {
                   }}
                 />
               </label>
+              <div className="insp-field">
+                <span>Rotación</span>
+                <div className="insp-rotate">
+                  {[0, 90, 180, 270].map((deg) => {
+                    const rad = (deg * Math.PI) / 180;
+                    const cur = ((m.rotation || 0) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2);
+                    const active = Math.abs(cur - rad) < 0.01;
+                    return (
+                      <button
+                        key={deg}
+                        type="button"
+                        className={active ? "active" : ""}
+                        onClick={() => actions.updateModule(m.id, { rotation: rad })}
+                      >
+                        {deg}°
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
               <label className="insp-field insp-toggle">
                 <span>Espejo</span>
                 <input
