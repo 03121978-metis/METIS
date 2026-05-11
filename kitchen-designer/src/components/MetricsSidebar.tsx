@@ -3,6 +3,7 @@ import { useProject } from "../store";
 import { computeMetrics, validateProject } from "../kitchen/validation";
 import type { ValidationIssue } from "../kitchen/types";
 import { RoomPanel } from "./RoomPanel";
+import { Inspector } from "./Inspector";
 
 function fmtMm(n: number): string {
   if (n >= 1000) return `${(n / 1000).toFixed(2)} m`;
@@ -29,6 +30,7 @@ export function MetricsSidebar() {
   return (
     <aside className="sidebar sidebar-right">
       <RoomPanel />
+      <Inspector />
       <div className="sidebar-header">
         <h2>Métricas</h2>
       </div>

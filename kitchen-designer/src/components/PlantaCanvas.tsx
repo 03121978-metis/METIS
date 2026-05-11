@@ -1,18 +1,19 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Stage, Layer, Line, Rect, Group, Text, Circle } from "react-konva";
 import type Konva from "konva";
+import type { KonvaEventObject } from "konva/lib/Node";
 import { useProject, useActions, useStore } from "../store";
 import { getCatalogItem } from "../kitchen/catalog";
 import { nearestWall, wallDirection, wallLength } from "../kitchen/validation";
-import type { ModulePlacement, Vec2, Wall } from "../kitchen/types";
+import type { ModulePlacement, Obstacle, Vec2, Wall } from "../kitchen/types";
 
 interface ViewTransform {
   scale: number; // px por mm
-  offsetX: number; // px
-  offsetY: number; // px
+  offsetX: number;
+  offsetY: number;
 }
 
-const SNAP_TOLERANCE_MM = 600; // distancia máxima para snap a muro
+const SNAP_TOLERANCE_MM = 600;
 
 function computeFit(width: number, height: number, walls: Wall[]): ViewTransform {
   if (walls.length === 0 || width === 0 || height === 0) {
@@ -47,10 +48,12 @@ interface ModuleViewProps {
   wall?: Wall;
   selected: boolean;
   onSelect: () => void;
+  onDragEnd: (worldDelta: Vec2) => void;
 }
 
-function ModuleView({ placement, transform, wall, selected, onSelect }: ModuleViewProps) {
+function ModuleView({ placement, transform, wall, selected, onSelect, onDragEnd }: ModuleViewProps) {
   const item = getCatalogItem(placement.sku);
+  const groupRef = useRef<Konva.Group>(null);
   if (!item) return null;
 
   let anchor: Vec2;
@@ -82,7 +85,25 @@ function ModuleView({ placement, transform, wall, selected, onSelect }: ModuleVi
     : "#e2dccb";
 
   return (
-    <Group x={p.x} y={p.y} rotation={angleDeg} onClick={onSelect} onTap={onSelect}>
+    <Group
+      ref={groupRef}
+      x={p.x}
+      y={p.y}
+      rotation={angleDeg}
+      draggable
+      onClick={onSelect}
+      onTap={onSelect}
+      onDragStart={onSelect}
+      onDragEnd={(e) => {
+        const newX = e.target.x();
+        const newY = e.target.y();
+        const dx = (newX - p.x) / transform.scale;
+        const dy = (newY - p.y) / transform.scale;
+        onDragEnd({ x: dx, y: dy });
+        // Konva keeps the new position; we'll re-render from updated store on next tick.
+        e.target.position({ x: p.x, y: p.y });
+      }}
+    >
       <Rect
         x={0}
         y={0}
@@ -99,11 +120,76 @@ function ModuleView({ placement, transform, wall, selected, onSelect }: ModuleVi
   );
 }
 
+interface ObstacleViewProps {
+  obstacle: Obstacle;
+  transform: ViewTransform;
+  selected: boolean;
+  onSelect: () => void;
+  onDragEnd: (newPosition: Vec2) => void;
+}
+
+function ObstacleView({ obstacle, transform, selected, onSelect, onDragEnd }: ObstacleViewProps) {
+  const p = toScreen(obstacle.position, transform);
+  const w = obstacle.width * transform.scale;
+  const h = obstacle.depth * transform.scale;
+  const label = obstacle.label ?? (
+    obstacle.kind === "column" ? "COL" :
+    obstacle.kind === "pilaster" ? "PIL" :
+    obstacle.kind === "beam" ? "BEAM" :
+    obstacle.kind === "niche" ? "NIC" : "OBS"
+  );
+  return (
+    <Group
+      x={p.x}
+      y={p.y}
+      draggable
+      onClick={onSelect}
+      onTap={onSelect}
+      onDragStart={onSelect}
+      onDragEnd={(e) => {
+        const newX = e.target.x();
+        const newY = e.target.y();
+        const world = toWorld({ x: newX, y: newY }, transform);
+        onDragEnd({ x: Math.round(world.x), y: Math.round(world.y) });
+        e.target.position({ x: p.x, y: p.y });
+      }}
+    >
+      <Rect
+        x={0}
+        y={0}
+        width={w}
+        height={h}
+        fill="#9c9c9c"
+        opacity={0.85}
+        stroke={selected ? "#1f6feb" : "#404040"}
+        strokeWidth={selected ? 2 : 1}
+      />
+      {/* Hatching diagonal sencilla */}
+      {Array.from({ length: Math.ceil((w + h) / 12) }).map((_, i) => {
+        const t = i * 12;
+        return (
+          <Line
+            key={i}
+            points={[t, 0, 0, t]}
+            stroke="#5a5a5a"
+            strokeWidth={1}
+            opacity={0.4}
+            listening={false}
+          />
+        );
+      })}
+      {w > 24 && h > 14 && (
+        <Text x={4} y={4} text={label} fontSize={10} fill="#fff" fontStyle="bold" />
+      )}
+    </Group>
+  );
+}
+
 export function PlantaCanvas() {
   const project = useProject();
   const actions = useActions();
-  const selectedId = useStore((s) => s.selectedModuleId);
-  const setSelected = useStore((s) => s.setSelectedModule);
+  const selection = useStore((s) => s.selection);
+  const setSelection = useStore((s) => s.setSelection);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ width: 0, height: 0 });
@@ -167,18 +253,71 @@ export function PlantaCanvas() {
         offsetFromStart: off,
         rotation: 0,
       });
-      setSelected(id);
+      setSelection({ kind: "module", id });
     } else {
       const id = actions.addModule({
         sku,
         position: world,
         rotation: 0,
       });
-      setSelected(id);
+      setSelection({ kind: "module", id });
     }
   }
 
+  // Borrar con tecla Supr/Backspace mientras el canvas está enfocado lógicamente.
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      const target = e.target as HTMLElement | null;
+      if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA")) return;
+      if (e.key !== "Delete" && e.key !== "Backspace") return;
+      if (!selection) return;
+      e.preventDefault();
+      if (selection.kind === "module") actions.removeModule(selection.id);
+      else actions.removeObstacle(selection.id);
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [selection, actions]);
+
   const stageRef = useRef<Konva.Stage>(null);
+
+  // Click vacío en el escenario → deseleccionar
+  function handleStageClick(e: KonvaEventObject<MouseEvent | TouchEvent>) {
+    if (e.target === e.target.getStage()) {
+      setSelection(null);
+    }
+  }
+
+  function moveModuleByDelta(m: ModulePlacement, delta: Vec2) {
+    if (m.wallId && m.offsetFromStart !== undefined) {
+      const wall = project.room.walls.find((w) => w.id === m.wallId);
+      if (!wall) return;
+      const dir = wallDirection(wall);
+      // Componente del delta a lo largo del muro
+      const along = delta.x * dir.x + delta.y * dir.y;
+      const item = getCatalogItem(m.sku);
+      if (!item) return;
+      const len = wallLength(wall);
+      const next = Math.max(0, Math.min(len - item.width, m.offsetFromStart + along));
+      actions.updateModule(m.id, { offsetFromStart: next });
+    } else if (m.position) {
+      // Posible re-snap a muro si entra en tolerancia
+      const newPos = { x: m.position.x + delta.x, y: m.position.y + delta.y };
+      const snap = nearestWall(newPos, project.room.walls);
+      const item = getCatalogItem(m.sku);
+      if (snap && item && snap.distance <= SNAP_TOLERANCE_MM) {
+        const len = wallLength(snap.wall);
+        const off = Math.max(0, Math.min(len - item.width, snap.offset - item.width / 2));
+        actions.updateModule(m.id, {
+          wallId: snap.wall.id,
+          offsetFromStart: off,
+          position: undefined,
+        });
+      } else {
+        actions.updateModule(m.id, { position: { x: Math.round(newPos.x), y: Math.round(newPos.y) } });
+      }
+    }
+  }
 
   // Render
   const polyPoints = project.room.walls.flatMap((w) => {
@@ -199,9 +338,8 @@ export function PlantaCanvas() {
       onDrop={handleDrop}
     >
       {size.width > 0 && size.height > 0 && (
-        <Stage ref={stageRef} width={size.width} height={size.height}>
+        <Stage ref={stageRef} width={size.width} height={size.height} onMouseDown={handleStageClick} onTouchStart={handleStageClick}>
           <Layer listening={false}>
-            {/* Suelo */}
             <Line points={polyPoints} closed fill="#fafaf6" stroke="#bdb6a8" strokeWidth={1} />
           </Layer>
           <Layer>
@@ -216,6 +354,7 @@ export function PlantaCanvas() {
                   stroke="#2b2b2b"
                   strokeWidth={Math.max(4, w.thickness * transform.scale)}
                   lineCap="round"
+                  listening={false}
                 />
               );
             })}
@@ -241,9 +380,21 @@ export function PlantaCanvas() {
                   stroke={op.kind === "door" ? "#8e6b3a" : "#5a9fd6"}
                   strokeWidth={Math.max(6, wall.thickness * transform.scale + 2)}
                   lineCap="butt"
+                  listening={false}
                 />
               );
             })}
+            {/* Obstáculos */}
+            {(project.room.obstacles ?? []).map((o) => (
+              <ObstacleView
+                key={o.id}
+                obstacle={o}
+                transform={transform}
+                selected={selection?.kind === "obstacle" && selection.id === o.id}
+                onSelect={() => setSelection({ kind: "obstacle", id: o.id })}
+                onDragEnd={(newPos) => actions.updateObstacle(o.id, { position: newPos })}
+              />
+            ))}
             {/* Módulos */}
             {project.modules.map((m) => {
               const wall = m.wallId ? project.room.walls.find((w) => w.id === m.wallId) : undefined;
@@ -253,8 +404,9 @@ export function PlantaCanvas() {
                   placement={m}
                   transform={transform}
                   wall={wall}
-                  selected={m.id === selectedId}
-                  onSelect={() => setSelected(m.id)}
+                  selected={selection?.kind === "module" && selection.id === m.id}
+                  onSelect={() => setSelection({ kind: "module", id: m.id })}
+                  onDragEnd={(delta) => moveModuleByDelta(m, delta)}
                 />
               );
             })}

@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import type {
   ModulePlacement,
+  Obstacle,
   Opening,
   Project,
   Utility,
@@ -35,13 +36,18 @@ function emptyProject(): Project {
   return {
     id: makeId("prj"),
     name: "Cocina sin nombre",
-    room: { walls, openings: [], ceilingHeight: CEILING },
+    room: { walls, openings: [], obstacles: [], ceilingHeight: CEILING },
     modules: [],
     utilities: [],
     createdAt: now,
     updatedAt: now,
   };
 }
+
+export type Selection =
+  | { kind: "module"; id: string }
+  | { kind: "obstacle"; id: string }
+  | null;
 
 export interface ProjectActions {
   addModule: (mod: Omit<ModulePlacement, "id"> & { id?: string }) => string;
@@ -50,6 +56,9 @@ export interface ProjectActions {
   addWall: (wall: Omit<Wall, "id"> & { id?: string }) => string;
   addOpening: (opening: Omit<Opening, "id"> & { id?: string }) => string;
   addUtility: (utility: Omit<Utility, "id"> & { id?: string }) => string;
+  addObstacle: (obstacle: Omit<Obstacle, "id"> & { id?: string }) => string;
+  removeObstacle: (id: string) => void;
+  updateObstacle: (id: string, patch: Partial<Obstacle>) => void;
   setRoomDimensions: (widthMm: number, depthMm: number, ceilingMm: number) => void;
   resetProject: () => void;
   renameProject: (name: string) => void;
@@ -57,8 +66,8 @@ export interface ProjectActions {
 
 export interface StoreState {
   project: Project;
-  selectedModuleId: string | null;
-  setSelectedModule: (id: string | null) => void;
+  selection: Selection;
+  setSelection: (sel: Selection) => void;
   actions: ProjectActions;
 }
 
@@ -68,8 +77,8 @@ function touch(p: Project): Project {
 
 export const useStore = create<StoreState>((set) => ({
   project: emptyProject(),
-  selectedModuleId: null,
-  setSelectedModule: (id) => set({ selectedModuleId: id }),
+  selection: null,
+  setSelection: (sel) => set({ selection: sel }),
   actions: {
     addModule: (mod) => {
       const id = mod.id ?? makeId("mod");
@@ -81,7 +90,7 @@ export const useStore = create<StoreState>((set) => ({
     removeModule: (id) =>
       set((s) => ({
         project: touch({ ...s.project, modules: s.project.modules.filter((m) => m.id !== id) }),
-        selectedModuleId: s.selectedModuleId === id ? null : s.selectedModuleId,
+        selection: s.selection?.kind === "module" && s.selection.id === id ? null : s.selection,
       })),
     updateModule: (id, patch) =>
       set((s) => ({
@@ -117,6 +126,42 @@ export const useStore = create<StoreState>((set) => ({
       }));
       return id;
     },
+    addObstacle: (obstacle) => {
+      const id = obstacle.id ?? makeId("obs");
+      set((s) => ({
+        project: touch({
+          ...s.project,
+          room: {
+            ...s.project.room,
+            obstacles: [...(s.project.room.obstacles ?? []), { ...obstacle, id }],
+          },
+        }),
+      }));
+      return id;
+    },
+    removeObstacle: (id) =>
+      set((s) => ({
+        project: touch({
+          ...s.project,
+          room: {
+            ...s.project.room,
+            obstacles: (s.project.room.obstacles ?? []).filter((o) => o.id !== id),
+          },
+        }),
+        selection: s.selection?.kind === "obstacle" && s.selection.id === id ? null : s.selection,
+      })),
+    updateObstacle: (id, patch) =>
+      set((s) => ({
+        project: touch({
+          ...s.project,
+          room: {
+            ...s.project.room,
+            obstacles: (s.project.room.obstacles ?? []).map((o) =>
+              o.id === id ? { ...o, ...patch } : o,
+            ),
+          },
+        }),
+      })),
     setRoomDimensions: (widthMm, depthMm, ceilingMm) =>
       set((s) => {
         const w = Math.max(500, Math.round(widthMm));
@@ -143,7 +188,7 @@ export const useStore = create<StoreState>((set) => ({
           }),
         };
       }),
-    resetProject: () => set({ project: emptyProject(), selectedModuleId: null }),
+    resetProject: () => set({ project: emptyProject(), selection: null }),
     renameProject: (name) => set((s) => ({ project: touch({ ...s.project, name }) })),
   },
 }));

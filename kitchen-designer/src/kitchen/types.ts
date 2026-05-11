@@ -75,9 +75,22 @@ export interface Utility {
   height: number;          // mm sobre suelo
 }
 
+export type ObstacleKind = "column" | "pilaster" | "niche" | "beam" | "generic";
+
+export interface Obstacle {
+  id: string;
+  kind: ObstacleKind;
+  position: Vec2;     // esquina sup-izq en mm (planta)
+  width: number;      // mm en X
+  depth: number;      // mm en Y
+  height?: number;    // mm de altura (techo a suelo si llega)
+  label?: string;
+}
+
 export interface Room {
   walls: Wall[];
   openings: Opening[];
+  obstacles: Obstacle[];
   ceilingHeight: number;
 }
 

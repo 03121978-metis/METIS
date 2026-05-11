@@ -13,6 +13,8 @@ function bboxOf(walls: { start: { x: number; y: number }; end: { x: number; y: n
 export function RoomPanel() {
   const project = useProject();
   const setRoomDimensions = useStore((s) => s.actions.setRoomDimensions);
+  const addObstacle = useStore((s) => s.actions.addObstacle);
+  const setSelection = useStore((s) => s.setSelection);
 
   const bbox = bboxOf(project.room.walls);
   const [width, setWidth] = useState<number>(bbox.width);
@@ -78,6 +80,40 @@ export function RoomPanel() {
           <button type="button" onClick={() => { setWidth(3000); setDepth(3000); setCeiling(2400); commit({ w: 3000, d: 3000, c: 2400 }); }}>3×3</button>
           <button type="button" onClick={() => { setWidth(4000); setDepth(3000); setCeiling(2400); commit({ w: 4000, d: 3000, c: 2400 }); }}>4×3</button>
           <button type="button" onClick={() => { setWidth(5000); setDepth(3500); setCeiling(2500); commit({ w: 5000, d: 3500, c: 2500 }); }}>5×3.5</button>
+        </div>
+        <div className="room-add">
+          <button
+            type="button"
+            onClick={() => {
+              const cx = Math.round(width / 2 - 150);
+              const cy = Math.round(depth / 2 - 150);
+              const id = addObstacle({
+                kind: "column",
+                position: { x: cx, y: cy },
+                width: 300,
+                depth: 300,
+                height: project.room.ceilingHeight,
+              });
+              setSelection({ kind: "obstacle", id });
+            }}
+          >
+            + Columna
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              const id = addObstacle({
+                kind: "pilaster",
+                position: { x: 100, y: 100 },
+                width: 400,
+                depth: 200,
+                height: project.room.ceilingHeight,
+              });
+              setSelection({ kind: "obstacle", id });
+            }}
+          >
+            + Pilastra
+          </button>
         </div>
       </div>
     </>

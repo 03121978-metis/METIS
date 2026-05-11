@@ -1,6 +1,8 @@
 import { getCatalogItem } from "./catalog";
 import type {
   Metrics,
+  ModulePlacement,
+  Obstacle,
   Project,
   ValidationIssue,
   Vec2,
@@ -43,6 +45,69 @@ export function nearestWall(p: Vec2, walls: Wall[]): { wall: Wall; offset: numbe
     if (!best || r.distance < best.distance) best = { wall: w, ...r };
   }
   return best;
+}
+
+/** AABB de un módulo en planta (mm). Devuelve null si no se puede ubicar. */
+export function moduleAabb(
+  placement: ModulePlacement,
+  walls: Wall[],
+): { minX: number; minY: number; maxX: number; maxY: number } | null {
+  const item = getCatalogItem(placement.sku);
+  if (!item) return null;
+  let anchor: Vec2;
+  let dir: Vec2;
+  let normal: Vec2;
+  if (placement.wallId && placement.offsetFromStart !== undefined) {
+    const wall = walls.find((w) => w.id === placement.wallId);
+    if (!wall) return null;
+    dir = wallDirection(wall);
+    // Normal hacia el interior (polígono horario): rotación -90°.
+    normal = { x: dir.y, y: -dir.x };
+    anchor = {
+      x: wall.start.x + dir.x * placement.offsetFromStart,
+      y: wall.start.y + dir.y * placement.offsetFromStart,
+    };
+  } else if (placement.position) {
+    const rot = placement.rotation || 0;
+    dir = { x: Math.cos(rot), y: Math.sin(rot) };
+    normal = { x: -Math.sin(rot), y: Math.cos(rot) };
+    anchor = placement.position;
+  } else {
+    return null;
+  }
+  const corners: Vec2[] = [
+    anchor,
+    { x: anchor.x + dir.x * item.width, y: anchor.y + dir.y * item.width },
+    {
+      x: anchor.x + dir.x * item.width + normal.x * item.depth,
+      y: anchor.y + dir.y * item.width + normal.y * item.depth,
+    },
+    { x: anchor.x + normal.x * item.depth, y: anchor.y + normal.y * item.depth },
+  ];
+  const xs = corners.map((c) => c.x);
+  const ys = corners.map((c) => c.y);
+  return {
+    minX: Math.min(...xs),
+    maxX: Math.max(...xs),
+    minY: Math.min(...ys),
+    maxY: Math.max(...ys),
+  };
+}
+
+export function obstacleAabb(o: Obstacle): { minX: number; minY: number; maxX: number; maxY: number } {
+  return {
+    minX: o.position.x,
+    minY: o.position.y,
+    maxX: o.position.x + o.width,
+    maxY: o.position.y + o.depth,
+  };
+}
+
+function aabbOverlap(
+  a: { minX: number; minY: number; maxX: number; maxY: number },
+  b: { minX: number; minY: number; maxX: number; maxY: number },
+): boolean {
+  return a.minX < b.maxX && b.minX < a.maxX && a.minY < b.maxY && b.minY < a.maxY;
 }
 
 export function polygonAreaMm2(points: Vec2[]): number {
@@ -252,7 +317,27 @@ export function validateProject(project: Project): ValidationIssue[] {
     }
   }
 
-  // 5) Frigorífico/horno junto a fregadero (info)
+  // 5) Módulos colisionando con obstáculos (columnas, pilastras…)
+  const obstacles = project.room.obstacles ?? [];
+  for (const m of project.modules) {
+    const mAabb = moduleAabb(m, project.room.walls);
+    if (!mAabb) continue;
+    const item = getCatalogItem(m.sku);
+    if (!item) continue;
+    for (const o of obstacles) {
+      if (aabbOverlap(mAabb, obstacleAabb(o))) {
+        const obsLabel = o.label ?? (o.kind === "column" ? "columna" : o.kind);
+        issues.push({
+          severity: "error",
+          code: "MODULE_HITS_OBSTACLE",
+          message: `"${item.name}" colisiona con ${obsLabel}`,
+          refs: [m.id, o.id],
+        });
+      }
+    }
+  }
+
+  // 6) Frigorífico/horno junto a fregadero (info)
   for (const m of project.modules) {
     const item = getCatalogItem(m.sku);
     if (!item) continue;

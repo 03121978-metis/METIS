@@ -260,6 +260,96 @@
   color: var(--text);
 }
 
+.room-add {
+  display: flex;
+  gap: 4px;
+  margin-top: 4px;
+}
+.room-add button {
+  flex: 1;
+  font-size: 11px;
+  padding: 6px 0;
+  border: 1px dashed var(--border-strong);
+  background: var(--panel-alt);
+  border-radius: 4px;
+  cursor: pointer;
+  color: var(--text);
+  font-weight: 500;
+}
+.room-add button:hover {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+
+/* ─── Inspector ───────────────────────────────────────────────────────── */
+.inspector-empty {
+  padding: 10px 12px;
+  font-size: 11px;
+  color: var(--text-soft);
+  font-style: italic;
+  border-bottom: 1px solid var(--border);
+  line-height: 1.5;
+}
+.inspector {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+}
+.insp-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+}
+.insp-title { font-weight: 600; }
+.insp-meta { color: var(--text-soft); font-size: 11px; }
+.insp-field {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--text-soft);
+  gap: 8px;
+}
+.insp-field > input,
+.insp-field > select {
+  width: 110px;
+  padding: 4px 6px;
+  font-size: 12px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--panel);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.insp-field > input[type="text"] { text-align: left; }
+.insp-field > input:focus,
+.insp-field > select:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+.insp-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 4px;
+}
+.insp-actions .btn-danger {
+  flex: 1;
+  background: rgba(192, 57, 43, 0.1);
+  border: 1px solid rgba(192, 57, 43, 0.4);
+  color: var(--error);
+  padding: 6px 0;
+  font-size: 12px;
+  font-weight: 500;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.insp-actions .btn-danger:hover {
+  background: rgba(192, 57, 43, 0.18);
+}
+.insp-actions .btn-ghost { flex: 1; }
+
 /* ─── Metrics ─────────────────────────────────────────────────────────── */
 .metrics-list {
   display: flex;
