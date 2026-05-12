@@ -118,6 +118,17 @@ export function RoomPanel() {
           <button type="button" onClick={addDoor}>+ Puerta</button>
           <button type="button" onClick={addWindow}>+ Ventana</button>
         </div>
+        <label className="room-worktop">
+          <span>Encimera</span>
+          <select
+            value={project.worktop?.mode ?? "over-modules"}
+            onChange={(e) => actions.setWorktop({ mode: e.target.value as "none" | "over-modules" | "full-wall" })}
+          >
+            <option value="none">Sin encimera</option>
+            <option value="over-modules">Sobre los muebles</option>
+            <option value="full-wall">Todo el muro</option>
+          </select>
+        </label>
       </div>
     </>
   );

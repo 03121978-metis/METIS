@@ -7,6 +7,7 @@ import type {
   Project,
   Utility,
   Wall,
+  WorktopConfig,
 } from "./kitchen/types";
 
 const ROOM_SIZE = 3000; // mm
@@ -39,6 +40,7 @@ function emptyProject(): Project {
     room: { walls, openings: [], obstacles: [], ceilingHeight: CEILING },
     modules: [],
     utilities: [],
+    worktop: { mode: "over-modules", depth: 620, thickness: 30, topHeight: 930 },
     createdAt: now,
     updatedAt: now,
   };
@@ -63,6 +65,7 @@ export interface ProjectActions {
   removeObstacle: (id: string) => void;
   updateObstacle: (id: string, patch: Partial<Obstacle>) => void;
   setRoomDimensions: (widthMm: number, depthMm: number, ceilingMm: number) => void;
+  setWorktop: (patch: Partial<WorktopConfig>) => void;
   resetProject: () => void;
   renameProject: (name: string) => void;
   undo: () => void;
@@ -237,6 +240,14 @@ export const useStore = create<StoreState>()(
           }),
         };
       }),
+    setWorktop: (patch) =>
+      set((s) => ({
+        ...snapshot(s),
+        project: touch({
+          ...s.project,
+          worktop: { ...(s.project.worktop ?? { mode: "over-modules", depth: 620, thickness: 30, topHeight: 930 }), ...patch },
+        }),
+      })),
     resetProject: () =>
       set((s) => ({
         ...snapshot(s),
@@ -266,7 +277,16 @@ export const useStore = create<StoreState>()(
       // Sólo persistimos el proyecto. Historial, selección y modo colocación
       // son estado de sesión.
       partialize: (s) => ({ project: s.project }),
-      version: 1,
+      version: 2,
+      migrate: (persisted: unknown, fromVersion: number) => {
+        // v1 -> v2: añadimos worktop al Project si faltaba.
+        const p = persisted as { project?: Partial<Project> } | undefined;
+        if (p && p.project && !p.project.worktop) {
+          p.project.worktop = { mode: "over-modules", depth: 620, thickness: 30, topHeight: 930 };
+        }
+        void fromVersion;
+        return p as { project: Project };
+      },
     },
   ),
 );

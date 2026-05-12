@@ -94,12 +94,22 @@ export interface Room {
   ceilingHeight: number;
 }
 
+export type WorktopMode = "none" | "over-modules" | "full-wall";
+
+export interface WorktopConfig {
+  mode: WorktopMode;
+  depth: number;      // mm perpendicular al muro (incluye voladizo frontal)
+  thickness: number;  // mm de espesor (encimera)
+  topHeight: number;  // mm sobre suelo a la que queda la cara superior
+}
+
 export interface Project {
   id: string;
   name: string;
   room: Room;
   modules: ModulePlacement[];
   utilities: Utility[];
+  worktop: WorktopConfig;
   createdAt: string;
   updatedAt: string;
 }

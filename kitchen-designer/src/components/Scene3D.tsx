@@ -5,6 +5,7 @@ import { useProject } from "../store";
 import { getCatalogItem } from "../kitchen/catalog";
 import { wallDirection, wallInteriorNormal, wallLength } from "../kitchen/validation";
 import type { ModulePlacement, Wall } from "../kitchen/types";
+import { computeWorktopSegments } from "../lib/worktop";
 
 const MM = 0.001; // 1 mm en metros
 
@@ -90,12 +91,76 @@ function ModuleMesh({ placement }: { placement: ModulePlacement }) {
           <meshStandardMaterial color="#1a1a1a" roughness={0.8} />
         </mesh>
       )}
+      {/* Aparatos encastrados dentro de la columna T-60-HOR */}
+      {item.sku === "T-60-HOR" && (() => {
+        // Centro del aparato a la altura del frente del mueble.
+        const baseX = wall.start.x * MM + dir.x * off + normal.x * (innerOff + item.depth * MM - 0.003);
+        const baseZ = wall.start.y * MM + dir.y * off + normal.y * (innerOff + item.depth * MM - 0.003);
+        const ovenH = 0.595, ovenW = 0.59, ovenD = 0.006;
+        const microH = 0.388, microW = 0.59, microD = 0.006;
+        const ovenY = 0.87 + ovenH / 2;
+        const microY = 1.55 + microH / 2;
+        const glassDX = normal.x * 0.001;
+        const glassDZ = normal.y * 0.001;
+        return (
+          <>
+            <mesh position={[baseX, ovenY, baseZ]} rotation={[0, -ang, 0]}>
+              <boxGeometry args={[ovenW, ovenH, ovenD]} />
+              <meshStandardMaterial color="#2c2c2c" roughness={0.35} metalness={0.5} />
+            </mesh>
+            <mesh position={[baseX + glassDX, ovenY, baseZ + glassDZ]} rotation={[0, -ang, 0]}>
+              <boxGeometry args={[ovenW * 0.78, ovenH * 0.6, 0.0012]} />
+              <meshStandardMaterial color="#0a0a0a" roughness={0.12} metalness={0.25} />
+            </mesh>
+            <mesh position={[baseX, microY, baseZ]} rotation={[0, -ang, 0]}>
+              <boxGeometry args={[microW, microH, microD]} />
+              <meshStandardMaterial color="#2c2c2c" roughness={0.35} metalness={0.5} />
+            </mesh>
+            <mesh position={[baseX + glassDX, microY, baseZ + glassDZ]} rotation={[0, -ang, 0]}>
+              <boxGeometry args={[microW * 0.65, microH * 0.55, 0.0012]} />
+              <meshStandardMaterial color="#0a0a0a" roughness={0.12} metalness={0.25} />
+            </mesh>
+          </>
+        );
+      })()}
     </group>
   );
 }
 
 interface RoomBbox {
   cx: number; cz: number; sx: number; sz: number; diag: number;
+}
+
+function WorktopMeshes() {
+  const project = useProject();
+  const cfg = project.worktop;
+  if (!cfg || cfg.mode === "none") return null;
+  const segs = computeWorktopSegments(project);
+  const thickness = cfg.thickness * MM;
+  const depthM = cfg.depth * MM;
+  const topY = cfg.topHeight * MM;
+  return (
+    <>
+      {segs.map((seg, i) => {
+        const wall = project.room.walls.find((w) => w.id === seg.wallId);
+        if (!wall) return null;
+        const dir = wallDirection(wall);
+        const normal = wallInteriorNormal(wall);
+        const innerOff = (wall.thickness / 2) * MM;
+        const len = (seg.end - seg.start) * MM;
+        const midOff = ((seg.start + seg.end) / 2) * MM;
+        const cx = wall.start.x * MM + dir.x * midOff + normal.x * (innerOff + depthM / 2);
+        const cz = wall.start.y * MM + dir.y * midOff + normal.y * (innerOff + depthM / 2);
+        const ang = Math.atan2(wall.end.y - wall.start.y, wall.end.x - wall.start.x);
+        return (
+          <mesh key={`wt_${i}`} position={[cx, topY - thickness / 2, cz]} rotation={[0, -ang, 0]}>
+            <boxGeometry args={[len, thickness, depthM]} />
+            <meshStandardMaterial color="#d6cbb0" roughness={0.4} metalness={0.05} />
+          </mesh>
+        );
+      })}
+    </>
+  );
 }
 
 function FloorAndCeiling({ bbox }: { bbox: RoomBbox }) {
@@ -158,6 +223,7 @@ export function Scene3D() {
         <Grid args={[20, 20]} cellColor="#cdd3da" sectionColor="#9aa3ad" infiniteGrid fadeDistance={20} />
         <FloorAndCeiling bbox={bbox} />
         {project.room.walls.map((w) => <WallMesh key={w.id} wall={w} />)}
+        <WorktopMeshes />
         {project.modules.map((m) => <ModuleMesh key={m.id} placement={m} />)}
         <OrbitControls makeDefault target={[bbox.cx, 1.2, bbox.cz]} />
       </Suspense>

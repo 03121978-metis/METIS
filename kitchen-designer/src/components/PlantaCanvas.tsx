@@ -8,6 +8,7 @@ import { getCatalogItem } from "../kitchen/catalog";
 import { nearestWall, wallDirection, wallInteriorNormal, wallUsableRange } from "../kitchen/validation";
 import type { ModulePlacement, Obstacle, Vec2, Wall } from "../kitchen/types";
 import { setStage } from "../lib/stageRef";
+import { computeWorktopSegments } from "../lib/worktop";
 
 interface ViewTransform {
   scale: number; // px por mm
@@ -715,6 +716,38 @@ export function PlantaCanvas() {
                 </Group>
               );
             })}
+            {/* Encimera (translúcida, debajo de los módulos) */}
+            {(() => {
+              const worktopDepth = project.worktop?.depth ?? 620;
+              const segs = computeWorktopSegments(project);
+              return segs.map((seg, i) => {
+                const wall = project.room.walls.find((w) => w.id === seg.wallId);
+                if (!wall) return null;
+                const dir = wallDirection(wall);
+                const normal = wallInteriorNormal(wall);
+                const innerOff = wall.thickness / 2;
+                const anchor = {
+                  x: wall.start.x + dir.x * seg.start + normal.x * innerOff,
+                  y: wall.start.y + dir.y * seg.start + normal.y * innerOff,
+                };
+                const p = toScreen(anchor, transform);
+                const angleDeg = (Math.atan2(dir.y, dir.x) * 180) / Math.PI;
+                return (
+                  <Group key={`wt_${i}`} x={p.x} y={p.y} rotation={angleDeg} listening={false}>
+                    <Rect
+                      x={0}
+                      y={0}
+                      width={(seg.end - seg.start) * transform.scale}
+                      height={worktopDepth * transform.scale}
+                      fill="#d6cbb0"
+                      opacity={0.45}
+                      stroke="#9a8c6b"
+                      strokeWidth={1}
+                    />
+                  </Group>
+                );
+              });
+            })()}
             {/* Obstáculos */}
             {(project.room.obstacles ?? []).map((o) => (
               <ObstacleView
