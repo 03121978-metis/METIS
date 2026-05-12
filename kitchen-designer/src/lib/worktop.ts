@@ -1,14 +1,44 @@
-import type { Project, Wall } from "../kitchen/types";
+import type { Project, Vec2, Wall } from "../kitchen/types";
 import { getCatalogItem } from "../kitchen/catalog";
-import { wallLength } from "../kitchen/validation";
+import { wallDirection, wallInteriorNormal, wallLength } from "../kitchen/validation";
 
-export interface WorktopSegment {
+/** Una banda recta sobre un muro: tramo de `start` a `end` a lo largo del muro. */
+export interface WallBandShape {
+  kind: "wall-band";
   wallId: string;
-  start: number; // mm a lo largo del muro (Wall.start → Wall.end)
+  start: number;
   end: number;
 }
 
-/** Familias de módulos que llevan encimera encima. */
+/** Cuadrado de rincón en una esquina del polígono: depth × depth de la
+ *  encimera, anclado a una esquina compartida por dos muros. Para detalle de
+ *  rincón con mueble B-90-RIN y W-60-RIN. */
+export interface CornerFillShape {
+  kind: "corner-fill";
+  wallId: string;        // muro "principal" en el que está el módulo de rincón
+  cornerOffset: number;  // offset a lo largo del muro principal donde está la esquina
+  size: number;          // lado del cuadrado
+  // Anchor en world coords: la esquina del rincón.
+  anchor: Vec2;
+  // Vectores unitarios para el rect: dir a lo largo del muro principal y
+  // normal hacia el interior.
+  dirIntoWall: Vec2;     // dirección que va contra el muro (-dir si esquina al inicio)
+  normalIntoRoom: Vec2;
+}
+
+/** Encimera sobre una isla (módulo libre sin wallId). */
+export interface IslandShape {
+  kind: "island";
+  centerX: number;
+  centerY: number;
+  width: number;
+  depth: number;
+  rotationRad: number;
+}
+
+export type WorktopShape = WallBandShape | CornerFillShape | IslandShape;
+
+/** Módulos que llevan encimera encima. */
 function bearsWorktop(sku: string): boolean {
   const item = getCatalogItem(sku);
   if (!item) return false;
@@ -16,22 +46,25 @@ function bearsWorktop(sku: string): boolean {
     (item.family === "appliance" && (item.sku === "A-LAV-60" || item.sku === "A-IND-60" || item.sku === "A-GAS-60"));
 }
 
-const MERGE_GAP_MM = 50; // huecos menores se unen en un solo tramo
+function isCornerSku(sku: string): boolean {
+  return /-RIN(-|$)/.test(sku);
+}
 
-export function computeWorktopSegments(project: Project): WorktopSegment[] {
+const MERGE_GAP_MM = 50;
+
+export function computeWorktopShapes(project: Project): WorktopShape[] {
   if (!project.worktop || project.worktop.mode === "none") return [];
-  const segs: WorktopSegment[] = [];
+  const out: WorktopShape[] = [];
+  const mode = project.worktop.mode;
 
+  // 1) Bandas por muro
   for (const wall of project.room.walls) {
-    if (project.worktop.mode === "full-wall") {
-      // De pared a pared, sin descontar el grosor de los muros perpendiculares.
-      // Así dos encimeras en L se solapan en la esquina y no queda hueco.
+    if (mode === "full-wall") {
       const len = wallLength(wall);
-      if (len > 0) segs.push({ wallId: wall.id, start: 0, end: len });
+      if (len > 0) out.push({ kind: "wall-band", wallId: wall.id, start: 0, end: len });
       continue;
     }
-
-    // Mode = over-modules: mergea bases adyacentes (gap < MERGE_GAP_MM).
+    // over-modules
     const intervals = project.modules
       .filter((m) => m.wallId === wall.id && m.offsetFromStart !== undefined && bearsWorktop(m.sku))
       .map((m) => {
@@ -51,20 +84,72 @@ export function computeWorktopSegments(project: Project): WorktopSegment[] {
     }
     const wlen = wallLength(wall);
     for (const m of merged) {
-      // Recortamos al muro por si un módulo está mal puesto.
-      segs.push({
+      out.push({
+        kind: "wall-band",
         wallId: wall.id,
         start: Math.max(0, m.start),
         end: Math.min(wlen, m.end),
       });
     }
   }
-  return segs;
+
+  // 2) Rellenos de esquina (solo en modo over-modules; en full-wall las
+  //    bandas ya cubren toda la pared y se solapan en el rincón).
+  if (mode === "over-modules") {
+    for (const m of project.modules) {
+      if (!m.wallId || m.offsetFromStart === undefined) continue;
+      if (!isCornerSku(m.sku)) continue;
+      const item = getCatalogItem(m.sku);
+      if (!item || item.family !== "base") continue;
+      const wall = project.room.walls.find((w) => w.id === m.wallId);
+      if (!wall) continue;
+      const dir = wallDirection(wall);
+      const normal = wallInteriorNormal(wall);
+      const wlen = wallLength(wall);
+      // Detectar qué extremo del muro ocupa el rincón.
+      const atStart = m.offsetFromStart < 10;
+      const atEnd = m.offsetFromStart + item.width > wlen - 10;
+      if (!atStart && !atEnd) continue;
+      const cornerOffset = atStart ? 0 : wlen;
+      const cornerPt: Vec2 = atStart
+        ? { x: wall.start.x, y: wall.start.y }
+        : { x: wall.end.x, y: wall.end.y };
+      out.push({
+        kind: "corner-fill",
+        wallId: wall.id,
+        cornerOffset,
+        size: item.depth,
+        anchor: cornerPt,
+        dirIntoWall: atStart ? dir : { x: -dir.x, y: -dir.y },
+        normalIntoRoom: normal,
+      });
+    }
+  }
+
+  // 3) Islas (módulos free-standing con bajos sobre ellos).
+  for (const m of project.modules) {
+    if (m.wallId) continue;
+    if (!m.position) continue;
+    if (!bearsWorktop(m.sku)) continue;
+    const item = getCatalogItem(m.sku)!;
+    out.push({
+      kind: "island",
+      centerX: m.position.x + item.width / 2,
+      centerY: m.position.y + item.depth / 2,
+      width: item.width,
+      depth: item.depth,
+      rotationRad: m.rotation || 0,
+    });
+  }
+
+  return out;
 }
 
-/** Cálculo del lineal total de encimera, útil para métricas/PDF. */
+/** Lineal total (sólo wall-band, para métricas). */
 export function worktopLinearMm(project: Project): number {
-  return computeWorktopSegments(project).reduce((s, x) => s + (x.end - x.start), 0);
+  return computeWorktopShapes(project)
+    .filter((s): s is WallBandShape => s.kind === "wall-band")
+    .reduce((acc, s) => acc + (s.end - s.start), 0);
 }
 
 export function findWallById(walls: Wall[], id: string): Wall | undefined {

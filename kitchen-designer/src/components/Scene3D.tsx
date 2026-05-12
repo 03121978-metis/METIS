@@ -5,7 +5,7 @@ import { useProject } from "../store";
 import { getCatalogItem } from "../kitchen/catalog";
 import { wallDirection, wallInteriorNormal, wallLength } from "../kitchen/validation";
 import type { ModulePlacement, Wall } from "../kitchen/types";
-import { computeWorktopSegments } from "../lib/worktop";
+import { computeWorktopShapes } from "../lib/worktop";
 
 const MM = 0.001; // 1 mm en metros
 
@@ -186,27 +186,63 @@ function WorktopMeshes() {
   const project = useProject();
   const cfg = project.worktop;
   if (!cfg || cfg.mode === "none") return null;
-  const segs = computeWorktopSegments(project);
+  const shapes = computeWorktopShapes(project);
   const thickness = cfg.thickness * MM;
   const depthM = cfg.depth * MM;
   const topY = cfg.topHeight * MM;
+  const matColor = "#d6cbb0";
   return (
     <>
-      {segs.map((seg, i) => {
-        const wall = project.room.walls.find((w) => w.id === seg.wallId);
-        if (!wall) return null;
-        const dir = wallDirection(wall);
-        const normal = wallInteriorNormal(wall);
-        const innerOff = (wall.thickness / 2) * MM;
-        const len = (seg.end - seg.start) * MM;
-        const midOff = ((seg.start + seg.end) / 2) * MM;
-        const cx = wall.start.x * MM + dir.x * midOff + normal.x * (innerOff + depthM / 2);
-        const cz = wall.start.y * MM + dir.y * midOff + normal.y * (innerOff + depthM / 2);
-        const ang = Math.atan2(wall.end.y - wall.start.y, wall.end.x - wall.start.x);
+      {shapes.map((s, i) => {
+        if (s.kind === "wall-band") {
+          const wall = project.room.walls.find((w) => w.id === s.wallId);
+          if (!wall) return null;
+          const dir = wallDirection(wall);
+          const normal = wallInteriorNormal(wall);
+          const innerOff = (wall.thickness / 2) * MM;
+          const len = (s.end - s.start) * MM;
+          const midOff = ((s.start + s.end) / 2) * MM;
+          const cx = wall.start.x * MM + dir.x * midOff + normal.x * (innerOff + depthM / 2);
+          const cz = wall.start.y * MM + dir.y * midOff + normal.y * (innerOff + depthM / 2);
+          const ang = Math.atan2(wall.end.y - wall.start.y, wall.end.x - wall.start.x);
+          return (
+            <mesh key={`wt_${i}`} position={[cx, topY - thickness / 2, cz]} rotation={[0, -ang, 0]}>
+              <boxGeometry args={[len, thickness, depthM]} />
+              <meshStandardMaterial color={matColor} roughness={0.4} metalness={0.05} />
+            </mesh>
+          );
+        }
+        if (s.kind === "corner-fill") {
+          const wall = project.room.walls.find((w) => w.id === s.wallId);
+          if (!wall) return null;
+          const innerOff = (wall.thickness / 2) * MM;
+          const sideM = s.size * MM;
+          // Centro del cuadrado: a partir del anchor (esquina) avanzamos
+          // sideM/2 a lo largo de dirIntoWall y sideM/2 a lo largo del
+          // normalIntoRoom, ambos por encima del innerOff de retranqueo.
+          const cx = s.anchor.x * MM
+            + s.dirIntoWall.x * (sideM / 2 + innerOff)
+            + s.normalIntoRoom.x * (sideM / 2 + innerOff);
+          const cz = s.anchor.y * MM
+            + s.dirIntoWall.y * (sideM / 2 + innerOff)
+            + s.normalIntoRoom.y * (sideM / 2 + innerOff);
+          const ang = Math.atan2(s.dirIntoWall.y, s.dirIntoWall.x);
+          return (
+            <mesh key={`wt_${i}`} position={[cx, topY - thickness / 2, cz]} rotation={[0, -ang, 0]}>
+              <boxGeometry args={[sideM, thickness, sideM]} />
+              <meshStandardMaterial color={matColor} roughness={0.4} metalness={0.05} />
+            </mesh>
+          );
+        }
+        // island
         return (
-          <mesh key={`wt_${i}`} position={[cx, topY - thickness / 2, cz]} rotation={[0, -ang, 0]}>
-            <boxGeometry args={[len, thickness, depthM]} />
-            <meshStandardMaterial color="#d6cbb0" roughness={0.4} metalness={0.05} />
+          <mesh
+            key={`wt_${i}`}
+            position={[s.centerX * MM, topY - thickness / 2, s.centerY * MM]}
+            rotation={[0, -s.rotationRad, 0]}
+          >
+            <boxGeometry args={[s.width * MM, thickness, s.depth * MM]} />
+            <meshStandardMaterial color={matColor} roughness={0.4} metalness={0.05} />
           </mesh>
         );
       })}

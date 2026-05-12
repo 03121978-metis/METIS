@@ -8,7 +8,7 @@ import { getCatalogItem } from "../kitchen/catalog";
 import { nearestWall, wallDirection, wallInteriorNormal, wallUsableRange } from "../kitchen/validation";
 import type { ModulePlacement, Obstacle, Vec2, Wall } from "../kitchen/types";
 import { setStage } from "../lib/stageRef";
-import { computeWorktopSegments } from "../lib/worktop";
+import { computeWorktopShapes } from "../lib/worktop";
 
 interface ViewTransform {
   scale: number; // px por mm
@@ -417,10 +417,17 @@ export function PlantaCanvas() {
     const item = getCatalogItem(placingSku);
     if (!item) return;
     const snap = nearestWall(world, project.room.walls);
+    const isCorner = /-RIN(-|$)/.test(item.sku);
     if (snap && !useFreeIsland) {
       const range = wallUsableRange(snap.wall, project.room.walls, item.width);
       let off = Math.max(range.min, Math.min(range.max, snap.offset - item.width / 2));
-      off = snapToNeighbours(snap.wall.id, off, item.width);
+      if (isCorner) {
+        // Forzamos el rincón al extremo del muro más cercano al cursor.
+        // En polígono horario los rincones van pegados a un extremo.
+        off = off < (range.min + range.max) / 2 ? range.min : range.max;
+      } else {
+        off = snapToNeighbours(snap.wall.id, off, item.width);
+      }
       const id = actions.addModule({
         sku: placingSku,
         wallId: snap.wall.id,
@@ -719,31 +726,61 @@ export function PlantaCanvas() {
             {/* Encimera (translúcida, debajo de los módulos) */}
             {(() => {
               const worktopDepth = project.worktop?.depth ?? 620;
-              const segs = computeWorktopSegments(project);
-              return segs.map((seg, i) => {
-                const wall = project.room.walls.find((w) => w.id === seg.wallId);
-                if (!wall) return null;
-                const dir = wallDirection(wall);
-                const normal = wallInteriorNormal(wall);
-                const innerOff = wall.thickness / 2;
-                const anchor = {
-                  x: wall.start.x + dir.x * seg.start + normal.x * innerOff,
-                  y: wall.start.y + dir.y * seg.start + normal.y * innerOff,
-                };
-                const p = toScreen(anchor, transform);
-                const angleDeg = (Math.atan2(dir.y, dir.x) * 180) / Math.PI;
+              const shapes = computeWorktopShapes(project);
+              const fill = "#d6cbb0";
+              const stroke = "#9a8c6b";
+              return shapes.map((s, i) => {
+                if (s.kind === "wall-band") {
+                  const wall = project.room.walls.find((w) => w.id === s.wallId);
+                  if (!wall) return null;
+                  const dir = wallDirection(wall);
+                  const normal = wallInteriorNormal(wall);
+                  const innerOff = wall.thickness / 2;
+                  const anchor = {
+                    x: wall.start.x + dir.x * s.start + normal.x * innerOff,
+                    y: wall.start.y + dir.y * s.start + normal.y * innerOff,
+                  };
+                  const p = toScreen(anchor, transform);
+                  const angleDeg = (Math.atan2(dir.y, dir.x) * 180) / Math.PI;
+                  return (
+                    <Group key={`wt_${i}`} x={p.x} y={p.y} rotation={angleDeg} listening={false}>
+                      <Rect x={0} y={0}
+                        width={(s.end - s.start) * transform.scale}
+                        height={worktopDepth * transform.scale}
+                        fill={fill} opacity={0.45} stroke={stroke} strokeWidth={1} />
+                    </Group>
+                  );
+                }
+                if (s.kind === "corner-fill") {
+                  // Rect tamaño size×size en la esquina, con dirIntoWall y normalIntoRoom.
+                  // Anchor está en la esquina; el rect se construye con un Group rotado.
+                  const dirAngleDeg = (Math.atan2(s.dirIntoWall.y, s.dirIntoWall.x) * 180) / Math.PI;
+                  const anchorWithInner = {
+                    x: s.anchor.x + s.normalIntoRoom.x * (project.room.walls.find(w => w.id === s.wallId)?.thickness ?? 100) / 2,
+                    y: s.anchor.y + s.normalIntoRoom.y * (project.room.walls.find(w => w.id === s.wallId)?.thickness ?? 100) / 2,
+                  };
+                  const p = toScreen(anchorWithInner, transform);
+                  return (
+                    <Group key={`wt_${i}`} x={p.x} y={p.y} rotation={dirAngleDeg} listening={false}>
+                      <Rect x={0} y={0}
+                        width={s.size * transform.scale}
+                        height={s.size * transform.scale}
+                        fill={fill} opacity={0.45} stroke={stroke} strokeWidth={1} />
+                    </Group>
+                  );
+                }
+                // island: rect centrado en (centerX, centerY) rotado
+                const center = toScreen({ x: s.centerX, y: s.centerY }, transform);
+                const w = s.width * transform.scale;
+                const d = s.depth * transform.scale;
                 return (
-                  <Group key={`wt_${i}`} x={p.x} y={p.y} rotation={angleDeg} listening={false}>
-                    <Rect
-                      x={0}
-                      y={0}
-                      width={(seg.end - seg.start) * transform.scale}
-                      height={worktopDepth * transform.scale}
-                      fill="#d6cbb0"
-                      opacity={0.45}
-                      stroke="#9a8c6b"
-                      strokeWidth={1}
-                    />
+                  <Group key={`wt_${i}`}
+                    x={center.x} y={center.y}
+                    rotation={(s.rotationRad * 180) / Math.PI}
+                    listening={false}
+                    offsetX={w / 2} offsetY={d / 2}>
+                    <Rect x={0} y={0} width={w} height={d}
+                      fill={fill} opacity={0.45} stroke={stroke} strokeWidth={1} />
                   </Group>
                 );
               });

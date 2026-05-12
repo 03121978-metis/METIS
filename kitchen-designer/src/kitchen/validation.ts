@@ -279,26 +279,38 @@ export function validateProject(project: Project): ValidationIssue[] {
     }
   }
 
-  // 2) Solapamientos entre módulos en el mismo muro (ignorando wall units que pueden ir sobre base)
-  const spansByWall = new Map<string, WallSpan[]>();
+  // 2) Solapamientos entre módulos en el mismo muro, comprobando también el
+  //    rango vertical (un alto sobre un bajo es legítimo aunque coincidan en
+  //    planta porque viven a distintas alturas).
+  interface VSpan extends WallSpan { yMin: number; yMax: number }
+  const spansByWall = new Map<string, VSpan[]>();
   for (const m of project.modules) {
     if (!m.wallId) continue;
     const item = getCatalogItem(m.sku);
     if (!item) continue;
     const off = m.offsetFromStart ?? 0;
-    const key = `${m.wallId}::${item.family}`;
-    if (!spansByWall.has(key)) spansByWall.set(key, []);
-    spansByWall.get(key)!.push({ id: m.id, label: item.name, start: off, end: off + item.width });
+    const yMin = item.mountHeight ?? 0;
+    const yMax = yMin + item.height;
+    if (!spansByWall.has(m.wallId)) spansByWall.set(m.wallId, []);
+    spansByWall.get(m.wallId)!.push({
+      id: m.id, label: item.name,
+      start: off, end: off + item.width,
+      yMin, yMax,
+    });
   }
   for (const [, spans] of spansByWall) {
     spans.sort((a, b) => a.start - b.start);
-    for (let i = 1; i < spans.length; i++) {
-      if (spansOverlap(spans[i - 1], spans[i])) {
+    for (let i = 0; i < spans.length; i++) {
+      for (let j = i + 1; j < spans.length; j++) {
+        if (!spansOverlap(spans[i], spans[j])) break; // sorted; nothing else can overlap horizontally
+        // Comprobar rango vertical: si no se cortan, no es colisión real.
+        const vOverlap = spans[i].yMin < spans[j].yMax && spans[j].yMin < spans[i].yMax;
+        if (!vOverlap) continue;
         issues.push({
           severity: "error",
           code: "MODULE_OVERLAP",
-          message: `Solapamiento entre "${spans[i - 1].label}" y "${spans[i].label}"`,
-          refs: [spans[i - 1].id, spans[i].id],
+          message: `Solapamiento entre "${spans[i].label}" y "${spans[j].label}"`,
+          refs: [spans[i].id, spans[j].id],
         });
       }
     }

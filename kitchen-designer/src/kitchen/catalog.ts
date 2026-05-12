@@ -7,6 +7,8 @@ export const CATALOG: CatalogItem[] = [
   { sku: "B-45-3C",  family: "base", name: "Bajo 45 · 3 cajones",      width: 450, depth: 580, height: 800, mountHeight: 100, price: 245 },
   { sku: "B-60-1P",  family: "base", name: "Bajo 60 · 1 puerta",       width: 600, depth: 580, height: 800, mountHeight: 100, price: 195 },
   { sku: "B-60-3C",  family: "base", name: "Bajo 60 · 3 cajones",      width: 600, depth: 580, height: 800, mountHeight: 100, price: 285 },
+  { sku: "B-60-FRG", family: "base", name: "Bajo 60 · fregadero",      width: 600, depth: 580, height: 800, mountHeight: 100, price: 175,
+    utilitiesRequired: ["water_supply", "water_drain"] },
   { sku: "B-80-2P",  family: "base", name: "Bajo 80 · 2 puertas",      width: 800, depth: 580, height: 800, mountHeight: 100, price: 235 },
   { sku: "B-90-RIN", family: "base", name: "Bajo rincón 90·90",        width: 900, depth: 900, height: 800, mountHeight: 100, price: 345 },
 
@@ -15,7 +17,7 @@ export const CATALOG: CatalogItem[] = [
   { sku: "W-60-1P",  family: "wall", name: "Alto 60 · 1 puerta",       width: 600, depth: 350, height: 720, mountHeight: 1450, price: 155 },
   { sku: "W-60-EL",  family: "wall", name: "Alto 60 · elevable",       width: 600, depth: 350, height: 360, mountHeight: 1450, price: 215 },
   { sku: "W-80-2P",  family: "wall", name: "Alto 80 · 2 puertas",      width: 800, depth: 350, height: 720, mountHeight: 1450, price: 195 },
-  { sku: "W-90-RIN", family: "wall", name: "Alto rincón 60·60",        width: 600, depth: 600, height: 720, mountHeight: 1450, price: 235 },
+  { sku: "W-60-RIN", family: "wall", name: "Alto rincón 60·60",        width: 600, depth: 600, height: 720, mountHeight: 1450, price: 235 },
 
   // ─── TALL (columnas) ─────────────────────────────────────────────────────
   { sku: "T-60-HOR", family: "tall", name: "Columna 60 horno + micro", width: 600, depth: 580, height: 2150, price: 545,
@@ -49,6 +51,8 @@ export const CATALOG: CatalogItem[] = [
   // ─── ACCESSORY ───────────────────────────────────────────────────────────
   { sku: "ACC-ZOC-3000", family: "accessory", name: "Zócalo H100 · 3000",  width: 3000, depth: 20, height: 100, price: 35 },
   { sku: "ACC-COR-2400", family: "accessory", name: "Cornisa superior · 2400", width: 2400, depth: 30, height: 60, price: 45 },
+  { sku: "ACC-PAN-LAT-2150", family: "accessory", name: "Panel lateral columna · 2150", width: 18, depth: 580, height: 2150, price: 95 },
+  { sku: "ACC-PAN-LAT-800",  family: "accessory", name: "Panel lateral bajo · 800",     width: 18, depth: 580, height: 800,  mountHeight: 100, price: 45 },
 ];
 
 export const FAMILY_LABEL: Record<Family, string> = {
