@@ -55,6 +55,38 @@ export function wallInteriorNormal(w: Wall): Vec2 {
   return { x: -dir.y, y: dir.x };
 }
 
+/** Rango utilizable de `offsetFromStart` sobre un muro para colocar un módulo
+ *  de `width` mm, descontando el grosor de los muros perpendiculares en cada
+ *  esquina. Asumimos polígono cerrado (cada extremo de muro coincide con un
+ *  perpendicular). */
+export function wallUsableRange(
+  wall: Wall,
+  walls: Wall[],
+  width: number,
+): { min: number; max: number } {
+  const len = wallLength(wall);
+  const eps = 0.5;
+  // Buscar el muro que comparte el punto `wall.start` y el que comparte
+  // `wall.end`. Si no hay (muro abierto), no descontamos esa esquina.
+  const prev = walls.find(
+    (w) => w.id !== wall.id && (
+      Math.hypot(w.end.x - wall.start.x, w.end.y - wall.start.y) < eps ||
+      Math.hypot(w.start.x - wall.start.x, w.start.y - wall.start.y) < eps
+    ),
+  );
+  const next = walls.find(
+    (w) => w.id !== wall.id && (
+      Math.hypot(w.start.x - wall.end.x, w.start.y - wall.end.y) < eps ||
+      Math.hypot(w.end.x - wall.end.x, w.end.y - wall.end.y) < eps
+    ),
+  );
+  const insetStart = prev ? prev.thickness / 2 : 0;
+  const insetEnd = next ? next.thickness / 2 : 0;
+  const min = insetStart;
+  const max = Math.max(min, len - insetEnd - width);
+  return { min, max };
+}
+
 /** AABB de un módulo en planta (mm). Devuelve null si no se puede ubicar.
  *  Los módulos anclados a muro se sitúan contra la cara interior del muro
  *  (desplazados thickness/2 desde el eje del muro hacia el interior). */
@@ -235,13 +267,13 @@ export function validateProject(project: Project): ValidationIssue[] {
       if (!item) issues.push({ severity: "error", code: "MODULE_SKU_MISSING", message: `Módulo ${m.id} usa SKU desconocido ${m.sku}`, refs: [m.id] });
       continue;
     }
-    const len = wallLength(wall);
+    const usable = wallUsableRange(wall, project.room.walls, item.width);
     const off = m.offsetFromStart ?? 0;
-    if (off < 0 || off + item.width > len + 0.5) {
+    if (off < usable.min - 0.5 || off > usable.max + 0.5) {
       issues.push({
         severity: "error",
         code: "MODULE_OUT_OF_WALL",
-        message: `${item.name} (${item.width}mm) sobresale del muro (${Math.round(len)}mm)`,
+        message: `${item.name} (${item.width}mm) se monta sobre el muro perpendicular o sobresale (rango válido ${Math.round(usable.min)}–${Math.round(usable.max)}mm)`,
         refs: [m.id, wall.id],
       });
     }

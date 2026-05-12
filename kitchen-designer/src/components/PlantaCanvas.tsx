@@ -5,7 +5,7 @@ import type { KonvaEventObject } from "konva/lib/Node";
 import { useProject, useActions, useStore } from "../store";
 import type { Selection } from "../store";
 import { getCatalogItem } from "../kitchen/catalog";
-import { nearestWall, wallDirection, wallInteriorNormal, wallLength } from "../kitchen/validation";
+import { nearestWall, wallDirection, wallInteriorNormal, wallUsableRange } from "../kitchen/validation";
 import type { ModulePlacement, Obstacle, Vec2, Wall } from "../kitchen/types";
 import { setStage } from "../lib/stageRef";
 
@@ -267,7 +267,7 @@ export function PlantaCanvas() {
     const SNAP = 220; // mm
     const wall = project.room.walls.find((w) => w.id === wallId);
     if (!wall) return off;
-    const len = wallLength(wall);
+    const range = wallUsableRange(wall, project.room.walls, width);
     const neighbours = project.modules
       .filter((m) => m.id !== excludeId && m.wallId === wallId && m.offsetFromStart !== undefined)
       .map((m) => {
@@ -277,7 +277,7 @@ export function PlantaCanvas() {
       })
       .filter((x): x is { start: number; end: number } => x !== null);
 
-    const candidates: number[] = [0, Math.max(0, len - width)];
+    const candidates: number[] = [range.min, range.max];
     for (const n of neighbours) {
       candidates.push(n.end);
       candidates.push(n.start - width);
@@ -285,7 +285,7 @@ export function PlantaCanvas() {
     let bestOff = off;
     let bestDist = SNAP;
     for (const c of candidates) {
-      if (c < 0 || c > len - width) continue;
+      if (c < range.min - 0.01 || c > range.max + 0.01) continue;
       const d = Math.abs(c - off);
       if (d < bestDist) {
         bestDist = d;
@@ -301,8 +301,8 @@ export function PlantaCanvas() {
     if (!item) return;
     const snap = nearestWall(world, project.room.walls);
     if (snap && !useFreeIsland) {
-      const len = wallLength(snap.wall);
-      let off = Math.max(0, Math.min(len - item.width, snap.offset - item.width / 2));
+      const range = wallUsableRange(snap.wall, project.room.walls, item.width);
+      let off = Math.max(range.min, Math.min(range.max, snap.offset - item.width / 2));
       off = snapToNeighbours(snap.wall.id, off, item.width);
       const id = actions.addModule({
         sku: placingSku,
@@ -414,8 +414,8 @@ export function PlantaCanvas() {
 
       if (snap.wall.id !== m.wallId) {
         // Cambio de muro: re-centramos sobre el punto al que arrastró el usuario.
-        const newLen = wallLength(snap.wall);
-        const newOff = Math.max(0, Math.min(newLen - item.width, snap.offset - item.width / 2));
+        const range = wallUsableRange(snap.wall, project.room.walls, item.width);
+        const newOff = Math.max(range.min, Math.min(range.max, snap.offset - item.width / 2));
         actions.updateModule(m.id, {
           wallId: snap.wall.id,
           offsetFromStart: newOff,
@@ -424,8 +424,8 @@ export function PlantaCanvas() {
         // Mismo muro: deslizamos a lo largo del muro por la componente del
         // delta proyectada sobre la dirección.
         const along = delta.x * dir.x + delta.y * dir.y;
-        const len = wallLength(wall);
-        const next = Math.max(0, Math.min(len - item.width, m.offsetFromStart + along));
+        const range = wallUsableRange(wall, project.room.walls, item.width);
+        const next = Math.max(range.min, Math.min(range.max, m.offsetFromStart + along));
         actions.updateModule(m.id, { offsetFromStart: next });
       }
     } else if (m.position) {
@@ -434,8 +434,8 @@ export function PlantaCanvas() {
       const newPos = { x: m.position.x + delta.x, y: m.position.y + delta.y };
       const snap = nearestWall(newPos, project.room.walls);
       if (snap && snap.distance <= 400) {
-        const len = wallLength(snap.wall);
-        const off = Math.max(0, Math.min(len - item.width, snap.offset - item.width / 2));
+        const range = wallUsableRange(snap.wall, project.room.walls, item.width);
+        const off = Math.max(range.min, Math.min(range.max, snap.offset - item.width / 2));
         actions.updateModule(m.id, {
           wallId: snap.wall.id,
           offsetFromStart: off,
@@ -463,9 +463,9 @@ export function PlantaCanvas() {
     const item = getCatalogItem(placingSku);
     const snap = nearestWall(cursorWorld, project.room.walls);
     if (snap && !shiftHeld) {
-      const len = wallLength(snap.wall);
       const w = item?.width ?? 0;
-      let off = Math.max(0, Math.min(Math.max(0, len - w), snap.offset - w / 2));
+      const range = wallUsableRange(snap.wall, project.room.walls, w);
+      let off = Math.max(range.min, Math.min(range.max, snap.offset - w / 2));
       off = snapToNeighbours(snap.wall.id, off, w);
       return { world: cursorWorld, wallId: snap.wall.id, offset: off, sku: placingSku };
     }

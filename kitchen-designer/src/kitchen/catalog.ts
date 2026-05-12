@@ -1,14 +1,14 @@
 import type { CatalogItem, Family } from "./types";
 
 export const CATALOG: CatalogItem[] = [
-  // ─── BASE (muebles bajos) ────────────────────────────────────────────────
-  { sku: "B-30-1P",  family: "base", name: "Bajo 30 · 1 puerta",       width: 300, depth: 580, height: 720, price: 145 },
-  { sku: "B-40-1P",  family: "base", name: "Bajo 40 · 1 puerta",       width: 400, depth: 580, height: 720, price: 165 },
-  { sku: "B-45-3C",  family: "base", name: "Bajo 45 · 3 cajones",      width: 450, depth: 580, height: 720, price: 245 },
-  { sku: "B-60-1P",  family: "base", name: "Bajo 60 · 1 puerta",       width: 600, depth: 580, height: 720, price: 195 },
-  { sku: "B-60-3C",  family: "base", name: "Bajo 60 · 3 cajones",      width: 600, depth: 580, height: 720, price: 285 },
-  { sku: "B-80-2P",  family: "base", name: "Bajo 80 · 2 puertas",      width: 800, depth: 580, height: 720, price: 235 },
-  { sku: "B-90-RIN", family: "base", name: "Bajo rincón 90·90",        width: 900, depth: 900, height: 720, price: 345 },
+  // ─── BASE (muebles bajos) ─ cuerpo 800 mm sobre patas 100 mm ────────────
+  { sku: "B-30-1P",  family: "base", name: "Bajo 30 · 1 puerta",       width: 300, depth: 580, height: 800, mountHeight: 100, price: 145 },
+  { sku: "B-40-1P",  family: "base", name: "Bajo 40 · 1 puerta",       width: 400, depth: 580, height: 800, mountHeight: 100, price: 165 },
+  { sku: "B-45-3C",  family: "base", name: "Bajo 45 · 3 cajones",      width: 450, depth: 580, height: 800, mountHeight: 100, price: 245 },
+  { sku: "B-60-1P",  family: "base", name: "Bajo 60 · 1 puerta",       width: 600, depth: 580, height: 800, mountHeight: 100, price: 195 },
+  { sku: "B-60-3C",  family: "base", name: "Bajo 60 · 3 cajones",      width: 600, depth: 580, height: 800, mountHeight: 100, price: 285 },
+  { sku: "B-80-2P",  family: "base", name: "Bajo 80 · 2 puertas",      width: 800, depth: 580, height: 800, mountHeight: 100, price: 235 },
+  { sku: "B-90-RIN", family: "base", name: "Bajo rincón 90·90",        width: 900, depth: 900, height: 800, mountHeight: 100, price: 345 },
 
   // ─── WALL (muebles altos / colgantes) ────────────────────────────────────
   { sku: "W-40-1P",  family: "wall", name: "Alto 40 · 1 puerta",       width: 400, depth: 350, height: 720, mountHeight: 1450, price: 125 },

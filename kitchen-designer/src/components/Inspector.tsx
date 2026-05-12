@@ -1,6 +1,6 @@
 import { useProject, useStore } from "../store";
 import { getCatalogItem } from "../kitchen/catalog";
-import { wallLength } from "../kitchen/validation";
+import { wallLength, wallUsableRange } from "../kitchen/validation";
 import type { ObstacleKind, OpeningKind } from "../kitchen/types";
 
 const OBSTACLE_LABELS: Record<ObstacleKind, string> = {
@@ -43,7 +43,7 @@ export function Inspector() {
     const item = getCatalogItem(m.sku);
     if (!item) return null;
     const wall = m.wallId ? project.room.walls.find((w) => w.id === m.wallId) : undefined;
-    const wallLen = wall ? wallLength(wall) : 0;
+    const usable = wall ? wallUsableRange(wall, project.room.walls, item.width) : { min: 0, max: 0 };
     const isWallAnchored = !!wall && m.offsetFromStart !== undefined;
 
     return (
@@ -68,8 +68,8 @@ export function Inspector() {
                   onChange={(e) => {
                     const newWall = project.room.walls.find((w) => w.id === e.target.value);
                     if (!newWall) return;
-                    const newLen = wallLength(newWall);
-                    const newOff = Math.max(0, Math.min(newLen - item.width, m.offsetFromStart ?? 0));
+                    const newRange = wallUsableRange(newWall, project.room.walls, item.width);
+                    const newOff = Math.max(newRange.min, Math.min(newRange.max, m.offsetFromStart ?? 0));
                     actions.updateModule(m.id, { wallId: newWall.id, offsetFromStart: newOff });
                   }}
                 >
@@ -82,12 +82,12 @@ export function Inspector() {
                 <span>Offset (mm)</span>
                 <input
                   type="number"
-                  min={0}
-                  max={Math.round(wallLen - item.width)}
+                  min={Math.round(usable.min)}
+                  max={Math.round(usable.max)}
                   step={10}
                   value={Math.round(m.offsetFromStart!)}
                   onChange={(e) => {
-                    const v = Math.max(0, Math.min(wallLen - item.width, Number(e.target.value) || 0));
+                    const v = Math.max(usable.min, Math.min(usable.max, Number(e.target.value) || 0));
                     actions.updateModule(m.id, { offsetFromStart: v });
                   }}
                 />
