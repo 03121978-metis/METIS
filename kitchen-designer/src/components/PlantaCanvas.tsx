@@ -260,26 +260,27 @@ export function PlantaCanvas() {
   }
 
   /** Ajusta `off` para que el borde del módulo se pegue al de un vecino del
-   *  mismo muro si está dentro de la tolerancia (150 mm). Devuelve el nuevo
-   *  offset o el original si no hay vecino cercano. */
-  function snapToNeighbours(wallId: string, off: number, width: number): number {
-    const SNAP = 150; // mm
-    const len = wallLength(project.room.walls.find((w) => w.id === wallId)!);
+   *  mismo muro si está dentro de la tolerancia (220 mm). Devuelve el nuevo
+   *  offset o el original si no hay vecino cercano. `excludeId` se omite del
+   *  cálculo (para no auto-snap durante un drag). */
+  function snapToNeighbours(wallId: string, off: number, width: number, excludeId?: string): number {
+    const SNAP = 220; // mm
+    const wall = project.room.walls.find((w) => w.id === wallId);
+    if (!wall) return off;
+    const len = wallLength(wall);
     const neighbours = project.modules
-      .filter((m) => m.wallId === wallId && m.offsetFromStart !== undefined)
+      .filter((m) => m.id !== excludeId && m.wallId === wallId && m.offsetFromStart !== undefined)
       .map((m) => {
         const it = getCatalogItem(m.sku);
         if (!it) return null;
         return { start: m.offsetFromStart!, end: m.offsetFromStart! + it.width };
       })
-      .filter((x): x is { start: number; end: number } => x !== null)
-      .sort((a, b) => a.start - b.start);
+      .filter((x): x is { start: number; end: number } => x !== null);
 
-    // Candidatos a pegar: extremos del muro y bordes de vecinos.
-    const candidates: number[] = [0, len - width];
+    const candidates: number[] = [0, Math.max(0, len - width)];
     for (const n of neighbours) {
-      candidates.push(n.end);             // mi izquierda contra su derecha
-      candidates.push(n.start - width);   // mi derecha contra su izquierda
+      candidates.push(n.end);
+      candidates.push(n.start - width);
     }
     let bestOff = off;
     let bestDist = SNAP;
@@ -311,15 +312,15 @@ export function PlantaCanvas() {
       });
       setSelection({ kind: "module", id });
     } else {
+      // Isla libre: el anchor del rect está en su esquina top-left, así que
+      // restamos w/2, d/2 para que el módulo quede centrado en el click.
       const id = actions.addModule({
         sku: placingSku,
-        position: world,
+        position: { x: world.x - item.width / 2, y: world.y - item.depth / 2 },
         rotation: 0,
       });
       setSelection({ kind: "module", id });
     }
-    // Modo multi-place: NO salimos del modo. Esc o click sobre la card para
-    // terminar.
   }
 
   function handleHostClick(e: React.MouseEvent<HTMLDivElement>) {
@@ -334,17 +335,29 @@ export function PlantaCanvas() {
     placeAtCursor(world, e.shiftKey);
   }
 
-  // Esc cancela el modo colocación.
+  // Esc cancela el modo colocación. Shift se trackea por keydown/keyup para
+  // que el preview refleje el modificador aunque el ratón esté quieto.
   useEffect(() => {
-    function onKey(e: KeyboardEvent) {
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === "Shift") {
+        setShiftHeld(true);
+        return;
+      }
       if (e.key === "Escape" && placingSku) {
         e.preventDefault();
         setPlacingSku(null);
         setCursorWorld(null);
       }
     }
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    function onKeyUp(e: KeyboardEvent) {
+      if (e.key === "Shift") setShiftHeld(false);
+    }
+    window.addEventListener("keydown", onKeyDown);
+    window.addEventListener("keyup", onKeyUp);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("keyup", onKeyUp);
+    };
   }, [placingSku, setPlacingSku]);
 
   // Borrar con tecla Supr/Backspace mientras el canvas está enfocado lógicamente.
@@ -452,8 +465,18 @@ export function PlantaCanvas() {
     if (snap && !shiftHeld) {
       const len = wallLength(snap.wall);
       const w = item?.width ?? 0;
-      const off = Math.max(0, Math.min(Math.max(0, len - w), snap.offset - w / 2));
+      let off = Math.max(0, Math.min(Math.max(0, len - w), snap.offset - w / 2));
+      off = snapToNeighbours(snap.wall.id, off, w);
       return { world: cursorWorld, wallId: snap.wall.id, offset: off, sku: placingSku };
+    }
+    // Isla libre: centramos el rect en el cursor también en el preview.
+    if (item) {
+      return {
+        world: { x: cursorWorld.x - item.width / 2, y: cursorWorld.y - item.depth / 2 },
+        wallId: null,
+        offset: 0,
+        sku: placingSku,
+      };
     }
     return { world: cursorWorld, wallId: null, offset: 0, sku: placingSku };
   })();
@@ -664,8 +687,8 @@ export function PlantaCanvas() {
               const d = item.depth * transform.scale;
               return (
                 <Rect
-                  x={p.x - w / 2}
-                  y={p.y - d / 2}
+                  x={p.x}
+                  y={p.y}
                   width={w}
                   height={d}
                   fill="#888"
