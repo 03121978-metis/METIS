@@ -1,8 +1,8 @@
 import type { Project, Vec2, Wall } from "../kitchen/types";
 import { getCatalogItem } from "../kitchen/catalog";
-import { wallDirection, wallInteriorNormal, wallLength } from "../kitchen/validation";
+import { wallDirection, wallInteriorNormal, wallLength, wallUsableRange } from "../kitchen/validation";
 
-/** Una banda recta sobre un muro: tramo de `start` a `end` a lo largo del muro. */
+/** Banda recta sobre un muro: tramo de `start` a `end` a lo largo del muro. */
 export interface WallBandShape {
   kind: "wall-band";
   wallId: string;
@@ -10,20 +10,13 @@ export interface WallBandShape {
   end: number;
 }
 
-/** Cuadrado de rincón en una esquina del polígono: depth × depth de la
- *  encimera, anclado a una esquina compartida por dos muros. Para detalle de
- *  rincón con mueble B-90-RIN y W-60-RIN. */
+/** Cuadrado de rincón axis-aligned en el plano. Lo definimos por su centro
+ *  porque así el render es trivial (Rect/Box centrado) sin lidiar con
+ *  rotaciones ambiguas que un único Y-rotation no puede resolver. */
 export interface CornerFillShape {
   kind: "corner-fill";
-  wallId: string;        // muro "principal" en el que está el módulo de rincón
-  cornerOffset: number;  // offset a lo largo del muro principal donde está la esquina
-  size: number;          // lado del cuadrado
-  // Anchor en world coords: la esquina del rincón.
-  anchor: Vec2;
-  // Vectores unitarios para el rect: dir a lo largo del muro principal y
-  // normal hacia el interior.
-  dirIntoWall: Vec2;     // dirección que va contra el muro (-dir si esquina al inicio)
-  normalIntoRoom: Vec2;
+  center: Vec2;
+  size: number;
 }
 
 /** Encimera sobre una isla (módulo libre sin wallId). */
@@ -38,7 +31,6 @@ export interface IslandShape {
 
 export type WorktopShape = WallBandShape | CornerFillShape | IslandShape;
 
-/** Módulos que llevan encimera encima. */
 function bearsWorktop(sku: string): boolean {
   const item = getCatalogItem(sku);
   if (!item) return false;
@@ -51,22 +43,23 @@ function isCornerSku(sku: string): boolean {
 }
 
 const MERGE_GAP_MM = 50;
+const CORNER_EPS = 1; // mm; el snap deja exactamente en range.min/max
 
 export function computeWorktopShapes(project: Project): WorktopShape[] {
   if (!project.worktop || project.worktop.mode === "none") return [];
   const out: WorktopShape[] = [];
   const mode = project.worktop.mode;
 
-  // 1) Bandas por muro
+  // 1) Bandas por muro (excluye módulos rincón — esos generan corner-fill)
   for (const wall of project.room.walls) {
     if (mode === "full-wall") {
       const len = wallLength(wall);
       if (len > 0) out.push({ kind: "wall-band", wallId: wall.id, start: 0, end: len });
       continue;
     }
-    // over-modules
     const intervals = project.modules
       .filter((m) => m.wallId === wall.id && m.offsetFromStart !== undefined && bearsWorktop(m.sku))
+      .filter((m) => !isCornerSku(m.sku))
       .map((m) => {
         const it = getCatalogItem(m.sku)!;
         return { start: m.offsetFromStart!, end: m.offsetFromStart! + it.width };
@@ -93,8 +86,9 @@ export function computeWorktopShapes(project: Project): WorktopShape[] {
     }
   }
 
-  // 2) Rellenos de esquina (solo en modo over-modules; en full-wall las
-  //    bandas ya cubren toda la pared y se solapan en el rincón).
+  // 2) Rellenos de esquina (solo over-modules). Detectamos por proximidad
+  //    al range.min/max del muro porque el snap pone el módulo ahí
+  //    exactamente.
   if (mode === "over-modules") {
     for (const m of project.modules) {
       if (!m.wallId || m.offsetFromStart === undefined) continue;
@@ -103,30 +97,33 @@ export function computeWorktopShapes(project: Project): WorktopShape[] {
       if (!item || item.family !== "base") continue;
       const wall = project.room.walls.find((w) => w.id === m.wallId);
       if (!wall) continue;
+
+      const range = wallUsableRange(wall, project.room.walls, item.width);
+      const atStart = Math.abs(m.offsetFromStart - range.min) < CORNER_EPS;
+      const atEnd = Math.abs(m.offsetFromStart - range.max) < CORNER_EPS;
+      if (!atStart && !atEnd) continue;
+
       const dir = wallDirection(wall);
       const normal = wallInteriorNormal(wall);
-      const wlen = wallLength(wall);
-      // Detectar qué extremo del muro ocupa el rincón.
-      const atStart = m.offsetFromStart < 10;
-      const atEnd = m.offsetFromStart + item.width > wlen - 10;
-      if (!atStart && !atEnd) continue;
-      const cornerOffset = atStart ? 0 : wlen;
       const cornerPt: Vec2 = atStart
         ? { x: wall.start.x, y: wall.start.y }
         : { x: wall.end.x, y: wall.end.y };
-      out.push({
-        kind: "corner-fill",
-        wallId: wall.id,
-        cornerOffset,
-        size: item.depth,
-        anchor: cornerPt,
-        dirIntoWall: atStart ? dir : { x: -dir.x, y: -dir.y },
-        normalIntoRoom: normal,
-      });
+      // Vector que va desde la esquina hacia el cuerpo del módulo.
+      const dirInto = atStart ? dir : { x: -dir.x, y: -dir.y };
+      // Centro del cuadrado: 1) desplazamos thickness/2 desde la esquina
+      //   en ambas direcciones (dirInto + normal) para llegar a la
+      //   esquina interior; 2) avanzamos size/2 más en cada dirección
+      //   para llegar al centro.
+      const off = wall.thickness / 2 + item.depth / 2;
+      const center: Vec2 = {
+        x: cornerPt.x + dirInto.x * off + normal.x * off,
+        y: cornerPt.y + dirInto.y * off + normal.y * off,
+      };
+      out.push({ kind: "corner-fill", center, size: item.depth });
     }
   }
 
-  // 3) Islas (módulos free-standing con bajos sobre ellos).
+  // 3) Islas
   for (const m of project.modules) {
     if (m.wallId) continue;
     if (!m.position) continue;
@@ -145,7 +142,6 @@ export function computeWorktopShapes(project: Project): WorktopShape[] {
   return out;
 }
 
-/** Lineal total (sólo wall-band, para métricas). */
 export function worktopLinearMm(project: Project): number {
   return computeWorktopShapes(project)
     .filter((s): s is WallBandShape => s.kind === "wall-band")

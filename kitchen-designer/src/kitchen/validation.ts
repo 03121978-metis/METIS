@@ -298,12 +298,14 @@ export function validateProject(project: Project): ValidationIssue[] {
       yMin, yMax,
     });
   }
+  // O(N²) por muro; un muro tiene como mucho ~20 módulos en una cocina
+  // real, así que no merece la pena optimizar con el break que dependía
+  // de la ordenación (no es seguro: si span[i+1] es muy ancho puede
+  // hacer que span[i] no se solape con él pero sí con span[i+2]).
   for (const [, spans] of spansByWall) {
-    spans.sort((a, b) => a.start - b.start);
     for (let i = 0; i < spans.length; i++) {
       for (let j = i + 1; j < spans.length; j++) {
-        if (!spansOverlap(spans[i], spans[j])) break; // sorted; nothing else can overlap horizontally
-        // Comprobar rango vertical: si no se cortan, no es colisión real.
+        if (!spansOverlap(spans[i], spans[j])) continue;
         const vOverlap = spans[i].yMin < spans[j].yMax && spans[j].yMin < spans[i].yMax;
         if (!vOverlap) continue;
         issues.push({

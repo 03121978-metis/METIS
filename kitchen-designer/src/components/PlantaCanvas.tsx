@@ -752,21 +752,22 @@ export function PlantaCanvas() {
                   );
                 }
                 if (s.kind === "corner-fill") {
-                  // Rect tamaño size×size en la esquina, con dirIntoWall y normalIntoRoom.
-                  // Anchor está en la esquina; el rect se construye con un Group rotado.
-                  const dirAngleDeg = (Math.atan2(s.dirIntoWall.y, s.dirIntoWall.x) * 180) / Math.PI;
-                  const anchorWithInner = {
-                    x: s.anchor.x + s.normalIntoRoom.x * (project.room.walls.find(w => w.id === s.wallId)?.thickness ?? 100) / 2,
-                    y: s.anchor.y + s.normalIntoRoom.y * (project.room.walls.find(w => w.id === s.wallId)?.thickness ?? 100) / 2,
-                  };
-                  const p = toScreen(anchorWithInner, transform);
+                  // Axis-aligned: centramos y dibujamos sin rotación.
+                  const half = (s.size * transform.scale) / 2;
+                  const c = toScreen(s.center, transform);
                   return (
-                    <Group key={`wt_${i}`} x={p.x} y={p.y} rotation={dirAngleDeg} listening={false}>
-                      <Rect x={0} y={0}
-                        width={s.size * transform.scale}
-                        height={s.size * transform.scale}
-                        fill={fill} opacity={0.45} stroke={stroke} strokeWidth={1} />
-                    </Group>
+                    <Rect
+                      key={`wt_${i}`}
+                      x={c.x - half}
+                      y={c.y - half}
+                      width={s.size * transform.scale}
+                      height={s.size * transform.scale}
+                      fill={fill}
+                      opacity={0.45}
+                      stroke={stroke}
+                      strokeWidth={1}
+                      listening={false}
+                    />
                   );
                 }
                 // island: rect centrado en (centerX, centerY) rotado

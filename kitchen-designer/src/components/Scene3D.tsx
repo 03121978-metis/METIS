@@ -213,22 +213,14 @@ function WorktopMeshes() {
           );
         }
         if (s.kind === "corner-fill") {
-          const wall = project.room.walls.find((w) => w.id === s.wallId);
-          if (!wall) return null;
-          const innerOff = (wall.thickness / 2) * MM;
+          // Cuadrado axis-aligned al plano XZ; rotación irrelevante.
           const sideM = s.size * MM;
-          // Centro del cuadrado: a partir del anchor (esquina) avanzamos
-          // sideM/2 a lo largo de dirIntoWall y sideM/2 a lo largo del
-          // normalIntoRoom, ambos por encima del innerOff de retranqueo.
-          const cx = s.anchor.x * MM
-            + s.dirIntoWall.x * (sideM / 2 + innerOff)
-            + s.normalIntoRoom.x * (sideM / 2 + innerOff);
-          const cz = s.anchor.y * MM
-            + s.dirIntoWall.y * (sideM / 2 + innerOff)
-            + s.normalIntoRoom.y * (sideM / 2 + innerOff);
-          const ang = Math.atan2(s.dirIntoWall.y, s.dirIntoWall.x);
           return (
-            <mesh key={`wt_${i}`} position={[cx, topY - thickness / 2, cz]} rotation={[0, -ang, 0]}>
+            <mesh
+              key={`wt_${i}`}
+              position={[s.center.x * MM, topY - thickness / 2, s.center.y * MM]}
+              rotation={[0, 0, 0]}
+            >
               <boxGeometry args={[sideM, thickness, sideM]} />
               <meshStandardMaterial color={matColor} roughness={0.4} metalness={0.05} />
             </mesh>
