@@ -55,6 +55,108 @@ interface ModuleViewProps {
   onDragEnd: (worldDelta: Vec2) => void;
 }
 
+/** Símbolos arquitectónicos dentro del rect del módulo. `w` y `d` están en
+ *  píxeles ya escalados. Las coords locales tienen el origen en la esquina
+ *  contra el muro, +x a lo largo del muro y +y hacia el interior. */
+function ModuleSymbol({ sku, w, d }: { sku: string; w: number; d: number }) {
+  // Sólo dibuja símbolos cuando hay sitio suficiente para que se vean.
+  if (w < 18 || d < 18) return null;
+
+  // ─── Fregaderos ─────────────────────────────────────────────────────────
+  if (sku === "S-1C-60") {
+    const m = Math.min(w, d) * 0.12;
+    return (
+      <Rect
+        x={m} y={m + d * 0.18} width={w - 2 * m} height={d - 2 * m - d * 0.18}
+        cornerRadius={Math.min(w, d) * 0.08}
+        stroke="#46606e" strokeWidth={1.2} fill="rgba(255,255,255,0.4)" listening={false}
+      />
+    );
+  }
+  if (sku === "S-2C-80") {
+    const m = Math.min(w, d) * 0.1;
+    const gap = w * 0.03;
+    const cw = (w - 2 * m - gap) / 2;
+    const ch = d - 2 * m - d * 0.18;
+    const r = Math.min(cw, ch) * 0.08;
+    return (
+      <>
+        <Rect x={m} y={m + d * 0.18} width={cw} height={ch}
+          cornerRadius={r} stroke="#46606e" strokeWidth={1.2}
+          fill="rgba(255,255,255,0.4)" listening={false} />
+        <Rect x={m + cw + gap} y={m + d * 0.18} width={cw} height={ch}
+          cornerRadius={r} stroke="#46606e" strokeWidth={1.2}
+          fill="rgba(255,255,255,0.4)" listening={false} />
+      </>
+    );
+  }
+
+  // ─── Placas (inducción / gas) ───────────────────────────────────────────
+  if (sku === "A-IND-60" || sku === "A-GAS-60") {
+    const r = Math.min(w, d) * 0.13;
+    const cx1 = w * 0.3, cx2 = w * 0.7;
+    const cy1 = d * 0.32, cy2 = d * 0.7;
+    const stroke = sku === "A-GAS-60" ? "#5a5a5a" : "#1f3a4d";
+    return (
+      <>
+        {[[cx1, cy1],[cx2, cy1],[cx1, cy2],[cx2, cy2]].map(([x, y], i) => (
+          <Circle key={i} x={x} y={y} radius={r}
+            stroke={stroke} strokeWidth={1.4}
+            fill={sku === "A-GAS-60" ? "rgba(0,0,0,0.05)" : "rgba(31,58,77,0.08)"}
+            listening={false} />
+        ))}
+        {/* Punto central para distinguir gas (quemador) */}
+        {sku === "A-GAS-60" && [[cx1, cy1],[cx2, cy1],[cx1, cy2],[cx2, cy2]].map(([x, y], i) => (
+          <Circle key={`g${i}`} x={x} y={y} radius={r * 0.18}
+            fill={stroke} listening={false} />
+        ))}
+      </>
+    );
+  }
+
+  // ─── Horno encastrable ──────────────────────────────────────────────────
+  if (sku === "A-HOR-60") {
+    return (
+      <>
+        <Rect x={w * 0.1} y={d * 0.2} width={w * 0.8} height={d * 0.6}
+          stroke="#5a4a30" strokeWidth={1.2}
+          fill="rgba(255,255,255,0.25)" listening={false} />
+        <Line points={[w * 0.3, d * 0.35, w * 0.7, d * 0.35]}
+          stroke="#5a4a30" strokeWidth={1.2} listening={false} />
+        <Circle x={w * 0.5} y={d * 0.7} radius={Math.min(w, d) * 0.05}
+          fill="#5a4a30" listening={false} />
+      </>
+    );
+  }
+
+  // ─── Lavavajillas ───────────────────────────────────────────────────────
+  if (sku === "A-LAV-60") {
+    return (
+      <>
+        <Rect x={w * 0.08} y={d * 0.12} width={w * 0.84} height={d * 0.76}
+          stroke="#3a4a60" strokeWidth={1.2}
+          fill="rgba(255,255,255,0.25)" listening={false} />
+        <Text x={w * 0.5 - 8} y={d * 0.5 - 6} text="LV" fontSize={11}
+          fill="#3a4a60" fontStyle="bold" listening={false} />
+      </>
+    );
+  }
+
+  // ─── Campana ────────────────────────────────────────────────────────────
+  if (sku === "A-CAM-60") {
+    return (
+      <>
+        <Line points={[w * 0.2, d * 0.5, w * 0.5, d * 0.2, w * 0.8, d * 0.5]}
+          stroke="#3a3a3a" strokeWidth={1.5} listening={false} />
+        <Line points={[w * 0.5, d * 0.2, w * 0.5, d * 0.85]}
+          stroke="#3a3a3a" strokeWidth={1.5} listening={false} />
+      </>
+    );
+  }
+
+  return null;
+}
+
 function ModuleView({ placement, transform, wall, selected, onSelect, onDragEnd }: ModuleViewProps) {
   const item = getCatalogItem(placement.sku);
   const groupRef = useRef<Konva.Group>(null);
@@ -119,6 +221,7 @@ function ModuleView({ placement, transform, wall, selected, onSelect, onDragEnd 
         stroke={selected ? "#1f6feb" : "#3a3a3a"}
         strokeWidth={selected ? 2 : 1}
       />
+      <ModuleSymbol sku={item.sku} w={w} d={d} />
       {/* Triángulo indicando el frente del módulo (lado interior de la pared). */}
       <Line
         points={
