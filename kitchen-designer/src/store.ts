@@ -253,6 +253,7 @@ export const useStore = create<StoreState>()(
         ...snapshot(s),
         project: emptyProject(),
         selection: null,
+        placingSku: null,
       })),
     renameProject: (name) =>
       set((s) => ({

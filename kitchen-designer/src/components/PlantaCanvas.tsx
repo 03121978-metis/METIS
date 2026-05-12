@@ -376,6 +376,17 @@ export function PlantaCanvas() {
     setCursorWorld(null);
   }
 
+  /** Para SKUs de rincón (-RIN): devuelve el extremo del rango más cercano
+   *  a `off`. Garantiza que un módulo rincón vive siempre pegado a una
+   *  esquina del muro al que pertenece. */
+  function snapToCornerOffset(range: { min: number; max: number }, off: number): number {
+    return off < (range.min + range.max) / 2 ? range.min : range.max;
+  }
+
+  function isCornerSku(sku: string): boolean {
+    return /-RIN(-|$)/.test(sku);
+  }
+
   /** Ajusta `off` para que el borde del módulo se pegue al de un vecino del
    *  mismo muro si está dentro de la tolerancia (220 mm). Devuelve el nuevo
    *  offset o el original si no hay vecino cercano. `excludeId` se omite del
@@ -417,14 +428,11 @@ export function PlantaCanvas() {
     const item = getCatalogItem(placingSku);
     if (!item) return;
     const snap = nearestWall(world, project.room.walls);
-    const isCorner = /-RIN(-|$)/.test(item.sku);
     if (snap && !useFreeIsland) {
       const range = wallUsableRange(snap.wall, project.room.walls, item.width);
       let off = Math.max(range.min, Math.min(range.max, snap.offset - item.width / 2));
-      if (isCorner) {
-        // Forzamos el rincón al extremo del muro más cercano al cursor.
-        // En polígono horario los rincones van pegados a un extremo.
-        off = off < (range.min + range.max) / 2 ? range.min : range.max;
+      if (isCornerSku(item.sku)) {
+        off = snapToCornerOffset(range, off);
       } else {
         off = snapToNeighbours(snap.wall.id, off, item.width);
       }
@@ -539,7 +547,8 @@ export function PlantaCanvas() {
       if (snap.wall.id !== m.wallId) {
         // Cambio de muro: re-centramos sobre el punto al que arrastró el usuario.
         const range = wallUsableRange(snap.wall, project.room.walls, item.width);
-        const newOff = Math.max(range.min, Math.min(range.max, snap.offset - item.width / 2));
+        let newOff = Math.max(range.min, Math.min(range.max, snap.offset - item.width / 2));
+        if (isCornerSku(m.sku)) newOff = snapToCornerOffset(range, newOff);
         actions.updateModule(m.id, {
           wallId: snap.wall.id,
           offsetFromStart: newOff,
@@ -549,7 +558,8 @@ export function PlantaCanvas() {
         // delta proyectada sobre la dirección.
         const along = delta.x * dir.x + delta.y * dir.y;
         const range = wallUsableRange(wall, project.room.walls, item.width);
-        const next = Math.max(range.min, Math.min(range.max, m.offsetFromStart + along));
+        let next = Math.max(range.min, Math.min(range.max, m.offsetFromStart + along));
+        if (isCornerSku(m.sku)) next = snapToCornerOffset(range, next);
         actions.updateModule(m.id, { offsetFromStart: next });
       }
     } else if (m.position) {
@@ -559,7 +569,8 @@ export function PlantaCanvas() {
       const snap = nearestWall(newPos, project.room.walls);
       if (snap && snap.distance <= 400) {
         const range = wallUsableRange(snap.wall, project.room.walls, item.width);
-        const off = Math.max(range.min, Math.min(range.max, snap.offset - item.width / 2));
+        let off = Math.max(range.min, Math.min(range.max, snap.offset - item.width / 2));
+        if (isCornerSku(m.sku)) off = snapToCornerOffset(range, off);
         actions.updateModule(m.id, {
           wallId: snap.wall.id,
           offsetFromStart: off,
