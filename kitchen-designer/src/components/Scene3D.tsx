@@ -56,17 +56,22 @@ function ModuleMesh({ placement }: { placement: ModulePlacement }) {
   const mountBottom = (item.mountHeight ?? 0) * MM;
   const h = item.height * MM;
 
+  // Acabado por defecto: perfil J · blanco mate para todo lo modular.
+  // Los electrodomésticos quedan más oscuros para distinguirlos a la vista.
+  const isMatteWhite =
+    item.family === "base" || item.family === "wall" || item.family === "tall";
   const color =
-    item.family === "wall" ? "#cfe1ce"
-    : item.family === "tall" ? "#dac8a8"
-    : item.family === "appliance" ? "#aeb6c1"
+    isMatteWhite ? "#f0ede6"
+    : item.family === "appliance" ? "#7a8088"
     : item.family === "sink" ? "#b6d3df"
     : "#d8c9b3";
+  const roughness = isMatteWhite ? 0.92 : 0.45;
+  const metalness = isMatteWhite ? 0 : (item.family === "appliance" ? 0.4 : 0);
 
   return (
     <mesh position={[cx, mountBottom + h / 2, cz]} rotation={[0, -ang, 0]} scale={[placement.mirrored ? -1 : 1, 1, 1]}>
       <boxGeometry args={[item.width * MM, h, item.depth * MM]} />
-      <meshStandardMaterial color={color} />
+      <meshStandardMaterial color={color} roughness={roughness} metalness={metalness} />
     </mesh>
   );
 }

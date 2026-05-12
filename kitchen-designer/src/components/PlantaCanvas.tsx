@@ -185,13 +185,18 @@ function ModuleView({ placement, transform, wall, selected, onSelect, onDragEnd 
   const d = item.depth * transform.scale;
 
   const color =
-    item.family === "base" ? "#d8c9b3"
-    : item.family === "wall" ? "#cfe1ce"
-    : item.family === "tall" ? "#dac8a8"
+    item.family === "base" ? "#f3f0ea"
+    : item.family === "wall" ? "#f6f4ef"
+    : item.family === "tall" ? "#f3f0ea"
     : item.family === "appliance" ? "#aeb6c1"
     : item.family === "sink" ? "#b6d3df"
     : item.family === "worktop" ? "#e8d9b9"
     : "#e2dccb";
+
+  // Acabado por defecto: perfil J + blanco mate. La garganta del perfil J
+  // queda visible desde arriba como una línea fina en el borde frontal del
+  // módulo (el lado que da al interior de la habitación).
+  const isJProfile = item.family === "base" || item.family === "wall" || item.family === "tall";
 
   return (
     <Group
@@ -218,9 +223,17 @@ function ModuleView({ placement, transform, wall, selected, onSelect, onDragEnd 
         width={w}
         height={d}
         fill={color}
-        stroke={selected ? "#1f6feb" : "#3a3a3a"}
+        stroke={selected ? "#1f6feb" : "#9a9388"}
         strokeWidth={selected ? 2 : 1}
       />
+      {isJProfile && (
+        <Line
+          points={[2, d - 2, w - 2, d - 2]}
+          stroke="#7a7368"
+          strokeWidth={1.5}
+          listening={false}
+        />
+      )}
       <ModuleSymbol sku={item.sku} w={w} d={d} />
       {/* Triángulo indicando el frente del módulo (lado interior de la pared). */}
       <Line

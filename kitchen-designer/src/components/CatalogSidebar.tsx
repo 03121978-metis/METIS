@@ -46,6 +46,9 @@ export function CatalogSidebar() {
         <h2>Catálogo</h2>
         <small>{filtered.length} / {CATALOG.length}</small>
       </div>
+      <div className="catalog-finish">
+        Acabado por defecto: <strong>perfil J · blanco mate</strong>
+      </div>
       <div className="catalog-search">
         <input
           type="search"
