@@ -1,6 +1,6 @@
 import type { Project, Wall } from "../kitchen/types";
 import { getCatalogItem } from "../kitchen/catalog";
-import { wallLength, wallUsableRange } from "../kitchen/validation";
+import { wallLength } from "../kitchen/validation";
 
 export interface WorktopSegment {
   wallId: string;
@@ -24,8 +24,10 @@ export function computeWorktopSegments(project: Project): WorktopSegment[] {
 
   for (const wall of project.room.walls) {
     if (project.worktop.mode === "full-wall") {
-      const r = wallUsableRange(wall, project.room.walls, 0);
-      if (r.max > r.min) segs.push({ wallId: wall.id, start: r.min, end: r.max + 0 });
+      // De pared a pared, sin descontar el grosor de los muros perpendiculares.
+      // Así dos encimeras en L se solapan en la esquina y no queda hueco.
+      const len = wallLength(wall);
+      if (len > 0) segs.push({ wallId: wall.id, start: 0, end: len });
       continue;
     }
 
