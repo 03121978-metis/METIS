@@ -68,11 +68,29 @@ function ModuleMesh({ placement }: { placement: ModulePlacement }) {
   const roughness = isMatteWhite ? 0.92 : 0.45;
   const metalness = isMatteWhite ? 0 : (item.family === "appliance" ? 0.4 : 0);
 
+  // Perfil J: garganta oscura horizontal en el canto superior del frente del
+  // mueble (sistema de apertura handleless). Sobresale 1 mm por delante del
+  // frente para evitar z-fighting.
+  const grooveH = 0.03;      // 30 mm de alto
+  const grooveD = 0.005;     // 5 mm de profundidad visible
+  const grooveOffsetN = (item.depth / 2) * MM + grooveD / 2 + 0.0005;
+  const grooveX = wall.start.x * MM + dir.x * off + normal.x * (innerOff + grooveOffsetN);
+  const grooveZ = wall.start.y * MM + dir.y * off + normal.y * (innerOff + grooveOffsetN);
+  const grooveY = mountBottom + h - grooveH / 2 - 0.002;
+
   return (
-    <mesh position={[cx, mountBottom + h / 2, cz]} rotation={[0, -ang, 0]} scale={[placement.mirrored ? -1 : 1, 1, 1]}>
-      <boxGeometry args={[item.width * MM, h, item.depth * MM]} />
-      <meshStandardMaterial color={color} roughness={roughness} metalness={metalness} />
-    </mesh>
+    <group>
+      <mesh position={[cx, mountBottom + h / 2, cz]} rotation={[0, -ang, 0]} scale={[placement.mirrored ? -1 : 1, 1, 1]}>
+        <boxGeometry args={[item.width * MM, h, item.depth * MM]} />
+        <meshStandardMaterial color={color} roughness={roughness} metalness={metalness} />
+      </mesh>
+      {isMatteWhite && (
+        <mesh position={[grooveX, grooveY, grooveZ]} rotation={[0, -ang, 0]}>
+          <boxGeometry args={[item.width * MM - 0.01, grooveH, grooveD]} />
+          <meshStandardMaterial color="#1a1a1a" roughness={0.8} />
+        </mesh>
+      )}
+    </group>
   );
 }
 
