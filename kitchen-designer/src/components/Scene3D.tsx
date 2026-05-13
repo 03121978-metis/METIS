@@ -1,7 +1,6 @@
 import { Canvas, useThree } from "@react-three/fiber";
-import { OrbitControls, Environment, ContactShadows, SoftShadows } from "@react-three/drei";
+import { OrbitControls } from "@react-three/drei";
 import { Suspense, useEffect, useMemo } from "react";
-import { ACESFilmicToneMapping } from "three";
 import { useProject } from "../store";
 import { getCatalogItem } from "../kitchen/catalog";
 import { wallDirection, wallInteriorNormal, wallLength } from "../kitchen/validation";
@@ -293,17 +292,13 @@ function WorktopMeshes() {
 }
 
 function FloorAndCeiling({ bbox }: { bbox: RoomBbox }) {
+  // Sin techo: si la cámara orbita por encima de los muros, un techo opaco
+  // oculta la escena. Lo dejamos abierto.
   return (
-    <>
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[bbox.cx, 0, bbox.cz]} receiveShadow>
-        <planeGeometry args={[bbox.sx, bbox.sz]} />
-        <meshStandardMaterial {...MAT.floor} />
-      </mesh>
-      <mesh rotation={[Math.PI / 2, 0, 0]} position={[bbox.cx, 2.399, bbox.cz]} receiveShadow>
-        <planeGeometry args={[bbox.sx, bbox.sz]} />
-        <meshStandardMaterial {...MAT.ceiling} />
-      </mesh>
-    </>
+    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[bbox.cx, 0, bbox.cz]} receiveShadow>
+      <planeGeometry args={[bbox.sx, bbox.sz]} />
+      <meshStandardMaterial {...MAT.floor} />
+    </mesh>
   );
 }
 
@@ -314,15 +309,19 @@ function CameraRig({ bbox }: { bbox: RoomBbox }) {
     | null;
 
   useEffect(() => {
-    const eyeY = Math.max(1.7, bbox.diag * 0.45);
-    const lateral = Math.max(2.0, bbox.diag * 0.55);
-    camera.position.set(bbox.cx + lateral, eyeY, bbox.cz + lateral);
-    camera.lookAt(bbox.cx, 1.2, bbox.cz);
+    // Cámara dentro de la habitación, en uno de sus cuadrantes, a altura
+    // de ojos (~1.6 m), mirando hacia el centro. Posicionándola fuera (que
+    // es lo que hacíamos antes) hace que los muros opacos tapen toda la
+    // vista del interior.
+    const insetX = bbox.sx * 0.18;
+    const insetZ = bbox.sz * 0.18;
+    camera.position.set(bbox.cx - bbox.sx / 2 + insetX, 1.6, bbox.cz - bbox.sz / 2 + insetZ);
+    camera.lookAt(bbox.cx, 0.9, bbox.cz);
     if (controls && typeof controls.target?.set === "function") {
-      controls.target.set(bbox.cx, 1.2, bbox.cz);
+      controls.target.set(bbox.cx, 0.9, bbox.cz);
       controls.update?.();
     }
-  }, [bbox.cx, bbox.cz, bbox.sx, bbox.sz, bbox.diag, camera, controls]);
+  }, [bbox.cx, bbox.cz, bbox.sx, bbox.sz, camera, controls]);
 
   return null;
 }
@@ -351,53 +350,53 @@ export function Scene3D() {
   return (
     <Canvas
       shadows
-      camera={{ position: [bbox.cx + 4, 3, bbox.cz + 4], fov: 45 }}
-      gl={{ toneMapping: ACESFilmicToneMapping, toneMappingExposure: 1.05, antialias: true }}
-      dpr={[1, 2]}
+      camera={{
+        position: [bbox.cx - bbox.sx * 0.32, 1.6, bbox.cz - bbox.sz * 0.32],
+        fov: 50,
+      }}
+      gl={{ antialias: true }}
     >
-      <SoftShadows size={25} samples={12} focus={0} />
-      <CameraRig bbox={bbox} />
-
-      {/* Iluminación base: una hemisférica suave + una clave direccional
-          con sombras, todo robusto a que el HDRI no cargue. */}
-      <hemisphereLight args={["#fff8ec", "#7a6a52", 0.55]} />
-      <directionalLight
-        position={[bbox.cx + 4, 6, bbox.cz - 3]}
-        intensity={1.4}
-        castShadow
-        shadow-mapSize-width={2048}
-        shadow-mapSize-height={2048}
-        shadow-camera-near={0.5}
-        shadow-camera-far={20}
-        shadow-camera-left={-8}
-        shadow-camera-right={8}
-        shadow-camera-top={8}
-        shadow-camera-bottom={-8}
-        shadow-bias={-0.0001}
-      />
-
-      {/* HDRI ambiental (sólo lighting, no background). En propia Suspense
-          para que un fallo de red no oculte la escena entera. */}
       <Suspense fallback={null}>
-        <Environment preset="apartment" background={false} environmentIntensity={0.6} />
+        <CameraRig bbox={bbox} />
+
+        {/* Iluminación clásica y robusta: ambiente alto + clave por encima
+            de la cámara para que los frentes no queden retroiluminados.
+            En Three r155+ las intensidades se leen más oscuras (sin el ×π
+            del modo legacy), así que las subimos. */}
+        <ambientLight intensity={0.8} color="#fff5e6" />
+        <directionalLight
+          position={[bbox.cx + 3, 5, bbox.cz + 3]}
+          intensity={2.2}
+          castShadow
+          shadow-mapSize-width={1024}
+          shadow-mapSize-height={1024}
+          shadow-camera-near={0.5}
+          shadow-camera-far={20}
+          shadow-camera-left={-6}
+          shadow-camera-right={6}
+          shadow-camera-top={6}
+          shadow-camera-bottom={-6}
+        />
+        {/* Luz de relleno en el lado opuesto, sin sombras, para suavizar. */}
+        <directionalLight
+          position={[bbox.cx - 4, 4, bbox.cz - 4]}
+          intensity={0.6}
+          color="#dde6ee"
+        />
+
+        <FloorAndCeiling bbox={bbox} />
+        {project.room.walls.map((w) => <WallMesh key={w.id} wall={w} />)}
+        <WorktopMeshes />
+        {project.modules.map((m) => <ModuleMesh key={m.id} placement={m} />)}
+
+        <OrbitControls
+          makeDefault
+          target={[bbox.cx, 0.9, bbox.cz]}
+          minDistance={0.5}
+          maxDistance={Math.max(bbox.diag * 1.5, 6)}
+          maxPolarAngle={Math.PI / 2 - 0.05}
+        />
       </Suspense>
-
-      <FloorAndCeiling bbox={bbox} />
-      {project.room.walls.map((w) => <WallMesh key={w.id} wall={w} />)}
-      <WorktopMeshes />
-      {project.modules.map((m) => <ModuleMesh key={m.id} placement={m} />)}
-
-      {/* Sombras de contacto suaves para grounding visual. */}
-      <ContactShadows
-        position={[bbox.cx, 0.001, bbox.cz]}
-        opacity={0.35}
-        scale={Math.max(bbox.sx, bbox.sz) * 1.5}
-        blur={2.5}
-        far={2}
-        resolution={1024}
-      />
-
-      <OrbitControls makeDefault target={[bbox.cx, 1.2, bbox.cz]} />
     </Canvas>
   );
 }
