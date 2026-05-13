@@ -1,6 +1,7 @@
-import { Canvas, useThree } from "@react-three/fiber";
-import { OrbitControls } from "@react-three/drei";
-import { Suspense, useEffect, useMemo } from "react";
+import { Canvas, useFrame, useThree } from "@react-three/fiber";
+import { OrbitControls, Environment } from "@react-three/drei";
+import { Suspense, useEffect, useMemo, useRef } from "react";
+import type { MeshStandardMaterial } from "three";
 import { useProject } from "../store";
 import { getCatalogItem } from "../kitchen/catalog";
 import { wallDirection, wallInteriorNormal, wallLength } from "../kitchen/validation";
@@ -29,10 +30,34 @@ function WallMesh({ wall }: { wall: Wall }) {
   const ang = Math.atan2(wall.end.y - wall.start.y, wall.end.x - wall.start.x);
   const thickness = wall.thickness * MM;
   const height = 2.4;
+  const normal = wallInteriorNormal(wall);
+  const matRef = useRef<MeshStandardMaterial>(null);
+
+  // X-ray: si la cámara está fuera del lado interior del muro, lo atenuamos
+  // para no taparle al usuario la vista del interior. Lerp suave.
+  useFrame(({ camera }) => {
+    const mat = matRef.current;
+    if (!mat) return;
+    const dx = camera.position.x - cx;
+    const dz = camera.position.z - cz;
+    const dot = dx * normal.x + dz * normal.y;
+    const target = dot > 0 ? 1 : 0.06;
+    mat.opacity += (target - mat.opacity) * 0.18;
+    mat.transparent = mat.opacity < 0.98;
+    mat.depthWrite = mat.opacity > 0.5;
+  });
+
   return (
     <mesh position={[cx, height / 2, cz]} rotation={[0, -ang, 0]} receiveShadow castShadow>
       <boxGeometry args={[len, height, thickness]} />
-      <meshStandardMaterial {...MAT.wall} />
+      <meshStandardMaterial
+        ref={matRef}
+        color={MAT.wall.color}
+        roughness={MAT.wall.roughness}
+        metalness={MAT.wall.metalness}
+        transparent
+        opacity={1}
+      />
     </mesh>
   );
 }
@@ -359,10 +384,7 @@ export function Scene3D() {
       <Suspense fallback={null}>
         <CameraRig bbox={bbox} />
 
-        {/* Iluminación clásica y robusta: ambiente alto + clave por encima
-            de la cámara para que los frentes no queden retroiluminados.
-            En Three r155+ las intensidades se leen más oscuras (sin el ×π
-            del modo legacy), así que las subimos. */}
+        {/* Iluminación base: ambiente alto + clave cerca de la cámara + fill. */}
         <ambientLight intensity={0.8} color="#fff5e6" />
         <directionalLight
           position={[bbox.cx + 3, 5, bbox.cz + 3]}
@@ -377,12 +399,17 @@ export function Scene3D() {
           shadow-camera-top={6}
           shadow-camera-bottom={-6}
         />
-        {/* Luz de relleno en el lado opuesto, sin sombras, para suavizar. */}
         <directionalLight
           position={[bbox.cx - 4, 4, bbox.cz - 4]}
           intensity={0.6}
           color="#dde6ee"
         />
+
+        {/* HDRI sólo para reflejos suaves (IBL). En su propio Suspense para
+            que un fallo de red no rompa la escena. */}
+        <Suspense fallback={null}>
+          <Environment preset="apartment" background={false} />
+        </Suspense>
 
         <FloorAndCeiling bbox={bbox} />
         {project.room.walls.map((w) => <WallMesh key={w.id} wall={w} />)}
