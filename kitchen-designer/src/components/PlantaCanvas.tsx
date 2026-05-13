@@ -69,8 +69,8 @@ function ModuleSymbol({ sku, w, d }: { sku: string; w: number; d: number }) {
     return (
       <Rect
         x={m} y={m + d * 0.18} width={w - 2 * m} height={d - 2 * m - d * 0.18}
-        cornerRadius={Math.min(w, d) * 0.08}
-        stroke="#46606e" strokeWidth={1.2} fill="rgba(255,255,255,0.4)" listening={false}
+        cornerRadius={Math.min(w, d) * 0.06}
+        stroke="#222" strokeWidth={0.8} listening={false}
       />
     );
   }
@@ -79,15 +79,13 @@ function ModuleSymbol({ sku, w, d }: { sku: string; w: number; d: number }) {
     const gap = w * 0.03;
     const cw = (w - 2 * m - gap) / 2;
     const ch = d - 2 * m - d * 0.18;
-    const r = Math.min(cw, ch) * 0.08;
+    const r = Math.min(cw, ch) * 0.06;
     return (
       <>
         <Rect x={m} y={m + d * 0.18} width={cw} height={ch}
-          cornerRadius={r} stroke="#46606e" strokeWidth={1.2}
-          fill="rgba(255,255,255,0.4)" listening={false} />
+          cornerRadius={r} stroke="#222" strokeWidth={0.8} listening={false} />
         <Rect x={m + cw + gap} y={m + d * 0.18} width={cw} height={ch}
-          cornerRadius={r} stroke="#46606e" strokeWidth={1.2}
-          fill="rgba(255,255,255,0.4)" listening={false} />
+          cornerRadius={r} stroke="#222" strokeWidth={0.8} listening={false} />
       </>
     );
   }
@@ -97,19 +95,15 @@ function ModuleSymbol({ sku, w, d }: { sku: string; w: number; d: number }) {
     const r = Math.min(w, d) * 0.13;
     const cx1 = w * 0.3, cx2 = w * 0.7;
     const cy1 = d * 0.32, cy2 = d * 0.7;
-    const stroke = sku === "A-GAS-60" ? "#5a5a5a" : "#1f3a4d";
     return (
       <>
         {[[cx1, cy1],[cx2, cy1],[cx1, cy2],[cx2, cy2]].map(([x, y], i) => (
           <Circle key={i} x={x} y={y} radius={r}
-            stroke={stroke} strokeWidth={1.4}
-            fill={sku === "A-GAS-60" ? "rgba(0,0,0,0.05)" : "rgba(31,58,77,0.08)"}
-            listening={false} />
+            stroke="#222" strokeWidth={0.8} listening={false} />
         ))}
-        {/* Punto central para distinguir gas (quemador) */}
         {sku === "A-GAS-60" && [[cx1, cy1],[cx2, cy1],[cx1, cy2],[cx2, cy2]].map(([x, y], i) => (
-          <Circle key={`g${i}`} x={x} y={y} radius={r * 0.18}
-            fill={stroke} listening={false} />
+          <Circle key={`g${i}`} x={x} y={y} radius={r * 0.22}
+            stroke="#222" strokeWidth={0.6} listening={false} />
         ))}
       </>
     );
@@ -120,12 +114,11 @@ function ModuleSymbol({ sku, w, d }: { sku: string; w: number; d: number }) {
     return (
       <>
         <Rect x={w * 0.1} y={d * 0.2} width={w * 0.8} height={d * 0.6}
-          stroke="#5a4a30" strokeWidth={1.2}
-          fill="rgba(255,255,255,0.25)" listening={false} />
+          stroke="#222" strokeWidth={0.8} listening={false} />
         <Line points={[w * 0.3, d * 0.35, w * 0.7, d * 0.35]}
-          stroke="#5a4a30" strokeWidth={1.2} listening={false} />
-        <Circle x={w * 0.5} y={d * 0.7} radius={Math.min(w, d) * 0.05}
-          fill="#5a4a30" listening={false} />
+          stroke="#222" strokeWidth={0.6} listening={false} />
+        <Circle x={w * 0.5} y={d * 0.7} radius={Math.min(w, d) * 0.04}
+          stroke="#222" strokeWidth={0.6} listening={false} />
       </>
     );
   }
@@ -135,10 +128,10 @@ function ModuleSymbol({ sku, w, d }: { sku: string; w: number; d: number }) {
     return (
       <>
         <Rect x={w * 0.08} y={d * 0.12} width={w * 0.84} height={d * 0.76}
-          stroke="#3a4a60" strokeWidth={1.2}
-          fill="rgba(255,255,255,0.25)" listening={false} />
-        <Text x={w * 0.5 - 8} y={d * 0.5 - 6} text="LV" fontSize={11}
-          fill="#3a4a60" fontStyle="bold" listening={false} />
+          stroke="#222" strokeWidth={0.8} listening={false} />
+        <Text x={w * 0.5 - 6} y={d * 0.5 - 5} text="LV" fontSize={9}
+          fontFamily="ui-monospace, Consolas, monospace"
+          fill="#222" listening={false} />
       </>
     );
   }
@@ -148,9 +141,9 @@ function ModuleSymbol({ sku, w, d }: { sku: string; w: number; d: number }) {
     return (
       <>
         <Line points={[w * 0.2, d * 0.5, w * 0.5, d * 0.2, w * 0.8, d * 0.5]}
-          stroke="#3a3a3a" strokeWidth={1.5} listening={false} />
+          stroke="#222" strokeWidth={0.9} dash={[4, 3]} listening={false} />
         <Line points={[w * 0.5, d * 0.2, w * 0.5, d * 0.85]}
-          stroke="#3a3a3a" strokeWidth={1.5} listening={false} />
+          stroke="#222" strokeWidth={0.9} dash={[4, 3]} listening={false} />
       </>
     );
   }
@@ -185,19 +178,20 @@ function ModuleView({ placement, transform, wall, selected, onSelect, onDragEnd 
   const w = item.width * transform.scale;
   const d = item.depth * transform.scale;
 
-  const color =
-    item.family === "base" ? "#f3f0ea"
-    : item.family === "wall" ? "#f6f4ef"
-    : item.family === "tall" ? "#f3f0ea"
-    : item.family === "appliance" ? "#aeb6c1"
-    : item.family === "sink" ? "#b6d3df"
-    : item.family === "worktop" ? "#e8d9b9"
-    : "#e2dccb";
-
-  // Acabado por defecto: perfil J + blanco mate. La garganta del perfil J
-  // queda visible desde arriba como una línea fina en el borde frontal del
-  // módulo (el lado que da al interior de la habitación).
-  const isJProfile = item.family === "base" || item.family === "wall" || item.family === "tall";
+  // Estilo arquitectónico: contorno fino oscuro + relleno paper o muy tenue
+  // matiz por familia. Altos en discontinuo (proyección oculta desde planta),
+  // columnas con aspa.
+  const isWallUnit = item.family === "wall";
+  const isTall = item.family === "tall";
+  const fill =
+    item.family === "appliance" ? "#eef0f2"
+    : item.family === "sink" ? "#e8eef0"
+    : item.family === "worktop" ? "#f1ece1"
+    : "rgba(0,0,0,0)";
+  const stroke = selected ? "#1f6feb" : "#222";
+  const strokeWidth = selected ? 1.8 : 0.9;
+  const dash = isWallUnit ? [6, 4] : undefined;
+  const isJProfile = item.family === "base" || isWallUnit || isTall;
 
   return (
     <Group
@@ -223,33 +217,39 @@ function ModuleView({ placement, transform, wall, selected, onSelect, onDragEnd 
         y={0}
         width={w}
         height={d}
-        fill={color}
-        stroke={selected ? "#1f6feb" : "#9a9388"}
-        strokeWidth={selected ? 2 : 1}
+        fill={fill}
+        stroke={stroke}
+        strokeWidth={strokeWidth}
+        dash={dash}
       />
+      {/* Columna: aspa diagonal indicando "ocupa toda la altura". */}
+      {isTall && (
+        <>
+          <Line points={[0, 0, w, d]} stroke="#222" strokeWidth={0.7} opacity={0.55} listening={false} />
+          <Line points={[w, 0, 0, d]} stroke="#222" strokeWidth={0.7} opacity={0.55} listening={false} />
+        </>
+      )}
+      {/* Línea del perfil J en el borde frontal (referencia de orientación). */}
       {isJProfile && (
         <Line
-          points={[2, d - 2, w - 2, d - 2]}
-          stroke="#7a7368"
-          strokeWidth={1.5}
+          points={[0, d - 0.5, w, d - 0.5]}
+          stroke="#222"
+          strokeWidth={1.4}
           listening={false}
         />
       )}
       <ModuleSymbol sku={item.sku} w={w} d={d} />
-      {/* Triángulo indicando el frente del módulo (lado interior de la pared). */}
-      <Line
-        points={
-          placement.mirrored
-            ? [w * 0.75, 1, w * 0.25, 1, w / 2, Math.min(d * 0.3, 10)]
-            : [w * 0.25, 1, w * 0.75, 1, w / 2, Math.min(d * 0.3, 10)]
-        }
-        closed
-        fill={selected ? "#1f6feb" : "#444"}
-        opacity={0.5}
-        listening={false}
-      />
-      {w > 36 && d > 18 && (
-        <Text x={4} y={Math.min(14, d - 14)} text={item.sku} fontSize={11} fill="#222" listening={false} />
+      {w > 50 && d > 22 && (
+        <Text
+          x={4}
+          y={4}
+          text={`${item.sku}\n${Math.round(item.width)}×${Math.round(item.depth)}`}
+          fontSize={9}
+          fontFamily="ui-monospace, Consolas, monospace"
+          fill="#333"
+          lineHeight={1.15}
+          listening={false}
+        />
       )}
     </Group>
   );
@@ -289,32 +289,39 @@ function ObstacleView({ obstacle, transform, selected, onSelect, onDragEnd }: Ob
         e.target.position({ x: p.x, y: p.y });
       }}
     >
+      {/* Hatching diagonal sobre fondo paper, convención CAD de "macizo". */}
+      <Rect x={0} y={0} width={w} height={h} fill="#fafaf7" stroke="transparent" listening={false} />
+      {Array.from({ length: Math.ceil((w + h) / 8) }).map((_, i) => {
+        const t = (i + 1) * 8;
+        // Líneas diagonales a 45° dentro del rect, clipeadas a sus bordes.
+        const x0 = Math.max(0, t - h);
+        const y0 = Math.max(0, h - t);
+        const x1 = Math.min(t, w);
+        const y1 = Math.max(0, h - Math.min(t, w) + x0);
+        return (
+          <Line
+            key={i}
+            points={[x0, y0, x1, y1]}
+            stroke="#222"
+            strokeWidth={0.6}
+            opacity={0.7}
+            listening={false}
+          />
+        );
+      })}
       <Rect
         x={0}
         y={0}
         width={w}
         height={h}
-        fill="#9c9c9c"
-        opacity={0.85}
-        stroke={selected ? "#1f6feb" : "#404040"}
-        strokeWidth={selected ? 2 : 1}
+        fill="transparent"
+        stroke={selected ? "#1f6feb" : "#222"}
+        strokeWidth={selected ? 1.6 : 0.9}
       />
-      {/* Hatching diagonal sencilla */}
-      {Array.from({ length: Math.ceil((w + h) / 12) }).map((_, i) => {
-        const t = i * 12;
-        return (
-          <Line
-            key={i}
-            points={[t, 0, 0, t]}
-            stroke="#5a5a5a"
-            strokeWidth={1}
-            opacity={0.4}
-            listening={false}
-          />
-        );
-      })}
-      {w > 24 && h > 14 && (
-        <Text x={4} y={4} text={label} fontSize={10} fill="#fff" fontStyle="bold" />
+      {w > 28 && h > 16 && (
+        <Text x={4} y={4} text={label} fontSize={9}
+          fontFamily="ui-monospace, Consolas, monospace"
+          fill="#222" listening={false} />
       )}
     </Group>
   );
@@ -592,6 +599,33 @@ export function PlantaCanvas() {
     polyPoints.push(first.x, first.y);
   }
 
+  // Bbox de la habitación para dibujar la rejilla técnica (100 mm fina,
+  // 1000 mm fuerte). Sólo dibujamos líneas dentro del rectángulo envolvente
+  // ampliado un poco para que no se corte en los bordes.
+  const xs = project.room.walls.flatMap((w) => [w.start.x, w.end.x]);
+  const ys = project.room.walls.flatMap((w) => [w.start.y, w.end.y]);
+  const minX = xs.length ? Math.min(...xs) - 200 : 0;
+  const maxX = xs.length ? Math.max(...xs) + 200 : 0;
+  const minY = ys.length ? Math.min(...ys) - 200 : 0;
+  const maxY = ys.length ? Math.max(...ys) + 200 : 0;
+  const minXr = Math.floor(minX / 100) * 100;
+  const maxXr = Math.ceil(maxX / 100) * 100;
+  const minYr = Math.floor(minY / 100) * 100;
+  const maxYr = Math.ceil(maxY / 100) * 100;
+  const gridLines: Array<{ x1: number; y1: number; x2: number; y2: number; major: boolean }> = [];
+  for (let xmm = minXr; xmm <= maxXr; xmm += 100) {
+    const major = xmm % 1000 === 0;
+    const a = toScreen({ x: xmm, y: minYr }, transform);
+    const b = toScreen({ x: xmm, y: maxYr }, transform);
+    gridLines.push({ x1: a.x, y1: a.y, x2: b.x, y2: b.y, major });
+  }
+  for (let ymm = minYr; ymm <= maxYr; ymm += 100) {
+    const major = ymm % 1000 === 0;
+    const a = toScreen({ x: minXr, y: ymm }, transform);
+    const b = toScreen({ x: maxXr, y: ymm }, transform);
+    gridLines.push({ x1: a.x, y1: a.y, x2: b.x, y2: b.y, major });
+  }
+
   // Preview en vivo del módulo a colocar mientras el cursor está sobre la planta.
   const livePreview = (() => {
     if (!placingSku || !cursorWorld) return null;
@@ -631,115 +665,149 @@ export function PlantaCanvas() {
       </div>
       {size.width > 0 && size.height > 0 && (
         <Stage ref={stageRef} width={size.width} height={size.height} onMouseDown={handleStageClick} onTouchStart={handleStageClick}>
+          {/* L0: rejilla técnica de fondo */}
           <Layer listening={false}>
-            <Line points={polyPoints} closed fill="#fafaf6" stroke="#bdb6a8" strokeWidth={1} />
+            {gridLines.map((g, i) => (
+              <Line
+                key={i}
+                points={[g.x1, g.y1, g.x2, g.y2]}
+                stroke="#000"
+                strokeWidth={g.major ? 0.5 : 0.3}
+                opacity={g.major ? 0.18 : 0.07}
+              />
+            ))}
+          </Layer>
+          {/* L1: suelo de la habitación (paper más blanco) */}
+          <Layer listening={false}>
+            <Line points={polyPoints} closed fill="#ffffff" stroke="transparent" />
           </Layer>
           <Layer>
-            {/* Muros */}
+            {/* Muros: cajones rellenos mostrando el grosor real. */}
             {project.room.walls.map((w) => {
-              const a = toScreen(w.start, transform);
-              const b = toScreen(w.end, transform);
+              const dirN = wallDirection(w);
+              const norm = wallInteriorNormal(w);
+              const t = w.thickness / 2;
+              const c0 = toScreen({ x: w.start.x - norm.x * t, y: w.start.y - norm.y * t }, transform);
+              const c1 = toScreen({ x: w.end.x - norm.x * t, y: w.end.y - norm.y * t }, transform);
+              const c2 = toScreen({ x: w.end.x + norm.x * t, y: w.end.y + norm.y * t }, transform);
+              const c3 = toScreen({ x: w.start.x + norm.x * t, y: w.start.y + norm.y * t }, transform);
+              void dirN;
               return (
                 <Line
                   key={w.id}
-                  points={[a.x, a.y, b.x, b.y]}
-                  stroke="#2b2b2b"
-                  strokeWidth={Math.max(4, w.thickness * transform.scale)}
-                  lineCap="round"
+                  points={[c0.x, c0.y, c1.x, c1.y, c2.x, c2.y, c3.x, c3.y]}
+                  closed
+                  fill="#2c2c2c"
+                  stroke="#111"
+                  strokeWidth={0.6}
                   listening={false}
                 />
               );
             })}
-            {/* Huecos */}
+            {/* Huecos: cortamos el muro con un rect en color paper y
+                 dibujamos la simbología arquitectónica (arco / doble línea). */}
             {project.room.openings.map((op) => {
               const wall = project.room.walls.find((w) => w.id === op.wallId);
               if (!wall) return null;
               const dir = wallDirection(wall);
               const normal = wallInteriorNormal(wall);
-              const a = {
-                x: wall.start.x + dir.x * op.offsetFromStart,
-                y: wall.start.y + dir.y * op.offsetFromStart,
+              const t = wall.thickness / 2;
+              const a0 = {
+                x: wall.start.x + dir.x * op.offsetFromStart - normal.x * t,
+                y: wall.start.y + dir.y * op.offsetFromStart - normal.y * t,
               };
-              const b = {
-                x: wall.start.x + dir.x * (op.offsetFromStart + op.width),
-                y: wall.start.y + dir.y * (op.offsetFromStart + op.width),
+              const a1 = {
+                x: wall.start.x + dir.x * (op.offsetFromStart + op.width) - normal.x * t,
+                y: wall.start.y + dir.y * (op.offsetFromStart + op.width) - normal.y * t,
               };
-              const pa = toScreen(a, transform);
-              const pb = toScreen(b, transform);
+              const a2 = {
+                x: wall.start.x + dir.x * (op.offsetFromStart + op.width) + normal.x * t,
+                y: wall.start.y + dir.y * (op.offsetFromStart + op.width) + normal.y * t,
+              };
+              const a3 = {
+                x: wall.start.x + dir.x * op.offsetFromStart + normal.x * t,
+                y: wall.start.y + dir.y * op.offsetFromStart + normal.y * t,
+              };
+              const p0 = toScreen(a0, transform);
+              const p1 = toScreen(a1, transform);
+              const p2 = toScreen(a2, transform);
+              const p3 = toScreen(a3, transform);
               const isSel = selection?.kind === "opening" && selection.id === op.id;
               const isDoor = op.kind === "door";
-              // Arco de barrido para puertas: cuarto de círculo desde la
-              // bisagra (extremo "a") apuntando hacia el interior, radio =
-              // ancho del hueco.
+              const inn0 = toScreen({
+                x: wall.start.x + dir.x * op.offsetFromStart + normal.x * t,
+                y: wall.start.y + dir.y * op.offsetFromStart + normal.y * t,
+              }, transform);
               const dirAngleDeg = (Math.atan2(dir.y, dir.x) * 180) / Math.PI;
               const normalAngleDeg = (Math.atan2(normal.y, normal.x) * 180) / Math.PI;
-              // El Arc de Konva empieza en angle 0 (eje +x) y barre `angle` grados.
-              // Queremos que empiece en la dirección del muro y barra hacia el interior.
-              // Si la rotación del normal está a -90° de la dirección, hacemos angle=-90
-              // y rotation=dirAngle; si está a +90°, angle=90 y rotation=dirAngle.
-              const delta = ((normalAngleDeg - dirAngleDeg + 540) % 360) - 180; // signed
+              const delta = ((normalAngleDeg - dirAngleDeg + 540) % 360) - 180;
               const sweep = delta > 0 ? 90 : -90;
               return (
                 <Group key={op.id}>
+                  {/* Cut blanco que tapa el muro */}
                   <Line
-                    points={[pa.x, pa.y, pb.x, pb.y]}
-                    stroke={isDoor ? "#8e6b3a" : "#5a9fd6"}
-                    strokeWidth={Math.max(6, wall.thickness * transform.scale + 2)}
-                    shadowEnabled={isSel}
-                    shadowColor="#1f6feb"
-                    shadowBlur={isSel ? 10 : 0}
-                    lineCap="butt"
+                    points={[p0.x, p0.y, p1.x, p1.y, p2.x, p2.y, p3.x, p3.y]}
+                    closed
+                    fill="#ffffff"
+                    stroke={isSel ? "#1f6feb" : "transparent"}
+                    strokeWidth={isSel ? 1.5 : 0}
                     hitStrokeWidth={20}
                     onClick={() => selectShape({ kind: "opening", id: op.id })}
                     onTap={() => selectShape({ kind: "opening", id: op.id })}
                   />
-                  {isDoor && (
+                  {isDoor ? (
                     <>
+                      {/* Hoja de la puerta: una línea desde la bisagra hacia el interior */}
+                      <Line
+                        points={[
+                          inn0.x, inn0.y,
+                          inn0.x + dir.x * op.width * transform.scale,
+                          inn0.y + dir.y * op.width * transform.scale,
+                        ]}
+                        stroke="#222"
+                        strokeWidth={1.1}
+                        listening={false}
+                      />
+                      {/* Arco de barrido */}
                       <Arc
-                        x={pa.x}
-                        y={pa.y}
+                        x={inn0.x}
+                        y={inn0.y}
                         innerRadius={0}
                         outerRadius={op.width * transform.scale}
                         angle={sweep}
                         rotation={dirAngleDeg}
-                        stroke="#8e6b3a"
-                        strokeWidth={1}
-                        dash={[4, 4]}
-                        opacity={0.7}
-                        listening={false}
-                      />
-                      <Line
-                        points={[
-                          pa.x,
-                          pa.y,
-                          pa.x + dir.x * op.width * transform.scale,
-                          pa.y + dir.y * op.width * transform.scale,
-                        ]}
-                        stroke="#8e6b3a"
-                        strokeWidth={1}
-                        opacity={0.7}
+                        stroke="#222"
+                        strokeWidth={0.7}
+                        dash={[3, 3]}
+                        opacity={0.85}
                         listening={false}
                       />
                     </>
-                  )}
-                  {!isDoor && (
-                    <Line
-                      points={[pa.x, pa.y, pb.x, pb.y]}
-                      stroke="#fff"
-                      strokeWidth={Math.max(2, wall.thickness * transform.scale * 0.4)}
-                      lineCap="butt"
-                      listening={false}
-                    />
+                  ) : (
+                    <>
+                      {/* Ventana: doble línea fina cruzando el grosor del muro */}
+                      <Line
+                        points={[p0.x + (p3.x - p0.x) * 0.33, p0.y + (p3.y - p0.y) * 0.33,
+                                 p1.x + (p2.x - p1.x) * 0.33, p1.y + (p2.y - p1.y) * 0.33]}
+                        stroke="#222" strokeWidth={0.8} listening={false}
+                      />
+                      <Line
+                        points={[p0.x + (p3.x - p0.x) * 0.66, p0.y + (p3.y - p0.y) * 0.66,
+                                 p1.x + (p2.x - p1.x) * 0.66, p1.y + (p2.y - p1.y) * 0.66]}
+                        stroke="#222" strokeWidth={0.8} listening={false}
+                      />
+                    </>
                   )}
                 </Group>
               );
             })}
-            {/* Encimera (translúcida, debajo de los módulos) */}
+            {/* Encimera: contorno discontinuo + fill muy tenue */}
             {(() => {
               const worktopDepth = project.worktop?.depth ?? 620;
               const shapes = computeWorktopShapes(project);
-              const fill = "#d6cbb0";
+              const fill = "rgba(218,205,170,0.18)";
               const stroke = "#9a8c6b";
+              const dashed = [5, 4];
               return shapes.map((s, i) => {
                 if (s.kind === "wall-band") {
                   const wall = project.room.walls.find((w) => w.id === s.wallId);
@@ -758,12 +826,11 @@ export function PlantaCanvas() {
                       <Rect x={0} y={0}
                         width={(s.end - s.start) * transform.scale}
                         height={worktopDepth * transform.scale}
-                        fill={fill} opacity={0.45} stroke={stroke} strokeWidth={1} />
+                        fill={fill} stroke={stroke} strokeWidth={0.8} dash={dashed} />
                     </Group>
                   );
                 }
                 if (s.kind === "corner-fill") {
-                  // Axis-aligned: centramos y dibujamos sin rotación.
                   const half = (s.size * transform.scale) / 2;
                   const c = toScreen(s.center, transform);
                   return (
@@ -774,14 +841,13 @@ export function PlantaCanvas() {
                       width={s.size * transform.scale}
                       height={s.size * transform.scale}
                       fill={fill}
-                      opacity={0.45}
                       stroke={stroke}
-                      strokeWidth={1}
+                      strokeWidth={0.8}
+                      dash={dashed}
                       listening={false}
                     />
                   );
                 }
-                // island: rect centrado en (centerX, centerY) rotado
                 const center = toScreen({ x: s.centerX, y: s.centerY }, transform);
                 const w = s.width * transform.scale;
                 const d = s.depth * transform.scale;
@@ -792,7 +858,7 @@ export function PlantaCanvas() {
                     listening={false}
                     offsetX={w / 2} offsetY={d / 2}>
                     <Rect x={0} y={0} width={w} height={d}
-                      fill={fill} opacity={0.45} stroke={stroke} strokeWidth={1} />
+                      fill={fill} stroke={stroke} strokeWidth={0.8} dash={dashed} />
                   </Group>
                 );
               });
