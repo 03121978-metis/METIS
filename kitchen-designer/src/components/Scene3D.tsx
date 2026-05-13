@@ -1,6 +1,7 @@
 import { Canvas, useThree } from "@react-three/fiber";
-import { OrbitControls, Grid } from "@react-three/drei";
+import { OrbitControls, Environment, ContactShadows, SoftShadows } from "@react-three/drei";
 import { Suspense, useEffect, useMemo } from "react";
+import { ACESFilmicToneMapping } from "three";
 import { useProject } from "../store";
 import { getCatalogItem } from "../kitchen/catalog";
 import { wallDirection, wallInteriorNormal, wallLength } from "../kitchen/validation";
@@ -8,6 +9,19 @@ import type { ModulePlacement, Wall } from "../kitchen/types";
 import { computeWorktopShapes } from "../lib/worktop";
 
 const MM = 0.001; // 1 mm en metros
+
+// ─── Paleta de materiales ─────────────────────────────────────────────────
+const MAT = {
+  floor: { color: "#c9a679", roughness: 0.68, metalness: 0.02 },
+  wall: { color: "#ece7dc", roughness: 0.88, metalness: 0 },
+  ceiling: { color: "#f6f4ef", roughness: 0.95, metalness: 0 },
+  cabinetWhite: { color: "#f3f0e9", roughness: 0.78, metalness: 0 },
+  worktopStone: { color: "#dccfb4", roughness: 0.35, metalness: 0.05 },
+  applianceSteel: { color: "#5a5e62", roughness: 0.32, metalness: 0.78 },
+  applianceBlack: { color: "#1a1a1a", roughness: 0.18, metalness: 0.55 },
+  sinkCeramic: { color: "#f4f3ef", roughness: 0.18, metalness: 0.04 },
+  groove: { color: "#1a1a1a", roughness: 0.85, metalness: 0 },
+} as const;
 
 function WallMesh({ wall }: { wall: Wall }) {
   const len = wallLength(wall) * MM;
@@ -17,9 +31,9 @@ function WallMesh({ wall }: { wall: Wall }) {
   const thickness = wall.thickness * MM;
   const height = 2.4;
   return (
-    <mesh position={[cx, height / 2, cz]} rotation={[0, -ang, 0]}>
+    <mesh position={[cx, height / 2, cz]} rotation={[0, -ang, 0]} receiveShadow castShadow>
       <boxGeometry args={[len, height, thickness]} />
-      <meshStandardMaterial color="#e8e2d3" />
+      <meshStandardMaterial {...MAT.wall} />
     </mesh>
   );
 }
@@ -35,9 +49,10 @@ function ModuleMesh({ placement }: { placement: ModulePlacement }) {
     const d = item.depth * MM;
     const h = item.height * MM;
     return (
-      <mesh position={[placement.position.x * MM, h / 2, placement.position.y * MM]} rotation={[0, -placement.rotation, 0]}>
+      <mesh position={[placement.position.x * MM, h / 2, placement.position.y * MM]}
+            rotation={[0, -placement.rotation, 0]} castShadow receiveShadow>
         <boxGeometry args={[w, h, d]} />
-        <meshStandardMaterial color="#c5d4e8" />
+        <meshStandardMaterial {...MAT.cabinetWhite} />
       </mesh>
     );
   }
@@ -49,17 +64,12 @@ function ModuleMesh({ placement }: { placement: ModulePlacement }) {
   const off = (placement.offsetFromStart + item.width / 2) * MM;
   const innerOff = (wall.thickness / 2) * MM;
   const dep = (item.depth / 2) * MM;
-
   const cx = wall.start.x * MM + dir.x * off + normal.x * (innerOff + dep);
   const cz = wall.start.y * MM + dir.y * off + normal.y * (innerOff + dep);
   const wallAng = Math.atan2(wall.end.y - wall.start.y, wall.end.x - wall.start.x);
   const ang = wallAng + (placement.rotation || 0);
   const h = item.height * MM;
-  // Calculamos la altura del borde inferior del módulo (mountBottom) tomando
-  // en cuenta dónde va realmente cada cosa en una cocina real:
-  //   - Fregaderos: cuelgan de la encimera (borde superior = topHeight).
-  //   - Placas inducción/gas: encastradas, asoman ~5 mm sobre la encimera.
-  //   - Resto: mountHeight explícito, o 0 (suelo) por defecto.
+
   const worktopTopMM = (project.worktop?.topHeight ?? 930) * MM;
   let mountBottom: number;
   if (item.mountHeight !== undefined) {
@@ -72,54 +82,83 @@ function ModuleMesh({ placement }: { placement: ModulePlacement }) {
     mountBottom = 0;
   }
 
-  // Acabado por defecto: perfil J · blanco mate para todo lo modular.
-  // Los electrodomésticos quedan más oscuros para distinguirlos a la vista.
   const isMatteWhite =
     item.family === "base" || item.family === "wall" || item.family === "tall";
-  const color =
-    isMatteWhite ? "#f0ede6"
-    : item.family === "appliance" ? "#7a8088"
-    : item.family === "sink" ? "#b6d3df"
-    : "#d8c9b3";
-  const roughness = isMatteWhite ? 0.92 : 0.45;
-  const metalness = isMatteWhite ? 0 : (item.family === "appliance" ? 0.4 : 0);
+  const mat =
+    isMatteWhite ? MAT.cabinetWhite
+    : item.family === "appliance" ? MAT.applianceSteel
+    : item.family === "sink" ? MAT.sinkCeramic
+    : MAT.cabinetWhite;
 
-  // Perfil J: garganta oscura horizontal en el canto superior del frente del
-  // mueble (sistema de apertura handleless). Sobresale 1 mm por delante del
-  // frente para evitar z-fighting.
-  const grooveH = 0.03;      // 30 mm de alto
-  const grooveD = 0.005;     // 5 mm de profundidad visible
+  // Perfil J: hueco visible en el canto superior del frente.
+  const grooveH = 0.03;
+  const grooveD = 0.006;
   const grooveOffsetN = (item.depth / 2) * MM + grooveD / 2 + 0.0005;
   const grooveX = wall.start.x * MM + dir.x * off + normal.x * (innerOff + grooveOffsetN);
   const grooveZ = wall.start.y * MM + dir.y * off + normal.y * (innerOff + grooveOffsetN);
   const grooveY = mountBottom + h - grooveH / 2 - 0.002;
 
+  // Detalles de partición de puertas (vertical o cajones horizontales).
+  const widthMM = item.width * MM;
+  const splitFront = (item.depth / 2) * MM + 0.0006;
+  const splitX = wall.start.x * MM + dir.x * off + normal.x * (innerOff + splitFront);
+  const splitZ = wall.start.y * MM + dir.y * off + normal.y * (innerOff + splitFront);
+  const has2P = isMatteWhite && /-2P(-|$)/.test(item.sku);
+  const has3C = isMatteWhite && /-3C(-|$)/.test(item.sku);
+
   return (
     <group>
-      <mesh position={[cx, mountBottom + h / 2, cz]} rotation={[0, -ang, 0]} scale={[placement.mirrored ? -1 : 1, 1, 1]}>
-        <boxGeometry args={[item.width * MM, h, item.depth * MM]} />
-        <meshStandardMaterial color={color} roughness={roughness} metalness={metalness} />
+      <mesh position={[cx, mountBottom + h / 2, cz]} rotation={[0, -ang, 0]}
+            scale={[placement.mirrored ? -1 : 1, 1, 1]} castShadow receiveShadow>
+        <boxGeometry args={[widthMM, h, item.depth * MM]} />
+        <meshStandardMaterial {...mat} />
       </mesh>
+      {/* Garganta perfil J */}
       {isMatteWhite && (
         <mesh position={[grooveX, grooveY, grooveZ]} rotation={[0, -ang, 0]}>
-          <boxGeometry args={[item.width * MM - 0.01, grooveH, grooveD]} />
-          <meshStandardMaterial color="#1a1a1a" roughness={0.8} />
+          <boxGeometry args={[widthMM - 0.01, grooveH, grooveD]} />
+          <meshStandardMaterial {...MAT.groove} />
         </mesh>
       )}
-      {/* Frigorífico encastrable: bisagras horizontales (separador entre
-          frigo y congelador) + rejilla de ventilación en el zócalo. */}
+      {/* Vertical split: puertas 2P */}
+      {has2P && (
+        <mesh position={[splitX, mountBottom + h / 2, splitZ]} rotation={[0, -ang, 0]}>
+          <boxGeometry args={[0.002, h - 0.04, 0.003]} />
+          <meshStandardMaterial color="#888" roughness={0.7} />
+        </mesh>
+      )}
+      {/* Cajoneras 3C: tres líneas horizontales repartidas */}
+      {has3C && [0.25, 0.5, 0.75].map((p, idx) => (
+        <mesh key={`c${idx}`} position={[splitX, mountBottom + h * p, splitZ]} rotation={[0, -ang, 0]}>
+          <boxGeometry args={[widthMM - 0.02, 0.002, 0.003]} />
+          <meshStandardMaterial color="#888" roughness={0.7} />
+        </mesh>
+      ))}
+      {/* Zócalo bajo bases (rellena los 100 mm de patas, recess 30 mm) */}
+      {item.family === "base" && (item.mountHeight ?? 0) > 0 && (() => {
+        const zocH = (item.mountHeight ?? 0) * MM;
+        const zocRecess = 0.03;
+        const zocDep = item.depth * MM - 2 * zocRecess;
+        const zX = wall.start.x * MM + dir.x * off + normal.x * (innerOff + zocRecess + zocDep / 2);
+        const zZ = wall.start.y * MM + dir.y * off + normal.y * (innerOff + zocRecess + zocDep / 2);
+        return (
+          <mesh position={[zX, zocH / 2, zZ]} rotation={[0, -ang, 0]} castShadow>
+            <boxGeometry args={[widthMM - 0.01, zocH, zocDep]} />
+            <meshStandardMaterial color="#1a1a1a" roughness={0.75} metalness={0.05} />
+          </mesh>
+        );
+      })()}
+      {/* Frigorífico: separador horizontal + rejilla */}
       {item.sku === "T-60-FRI" && (() => {
         const frontX = wall.start.x * MM + dir.x * off + normal.x * (innerOff + item.depth * MM - 0.0015);
         const frontZ = wall.start.y * MM + dir.y * off + normal.y * (innerOff + item.depth * MM - 0.0015);
-        const lineW = item.width * MM - 0.02;
+        const lineW = widthMM - 0.02;
         return (
           <>
-            {/* Línea horizontal a 2/3 (separación frigo-congelador) */}
             <mesh position={[frontX, mountBottom + h * 0.66, frontZ]} rotation={[0, -ang, 0]}>
               <boxGeometry args={[lineW, 0.008, 0.002]} />
               <meshStandardMaterial color="#888" roughness={0.5} metalness={0.4} />
             </mesh>
-            {/* Rejilla inferior (sólo si va a suelo, no si lleva mountHeight) */}
             {(item.mountHeight ?? 0) === 0 && (
               <mesh position={[frontX, 0.08, frontZ]} rotation={[0, -ang, 0]}>
                 <boxGeometry args={[lineW, 0.04, 0.002]} />
@@ -129,22 +168,20 @@ function ModuleMesh({ placement }: { placement: ModulePlacement }) {
           </>
         );
       })()}
-      {/* Despensa: dos puertas grandes con separación a la altura del
-          tirador-J intermedio (parte usable a ~870 mm). */}
+      {/* Despensa: partición intermedia */}
       {item.sku === "T-60-DES" && (() => {
         const frontX = wall.start.x * MM + dir.x * off + normal.x * (innerOff + item.depth * MM - 0.0015);
         const frontZ = wall.start.y * MM + dir.y * off + normal.y * (innerOff + item.depth * MM - 0.0015);
-        const lineW = item.width * MM - 0.02;
+        const lineW = widthMM - 0.02;
         return (
           <mesh position={[frontX, 0.87, frontZ]} rotation={[0, -ang, 0]}>
             <boxGeometry args={[lineW, 0.018, 0.002]} />
-            <meshStandardMaterial color="#1a1a1a" roughness={0.8} />
+            <meshStandardMaterial {...MAT.groove} />
           </mesh>
         );
       })()}
-      {/* Aparatos encastrados dentro de la columna T-60-HOR */}
+      {/* Columna horno + microondas */}
       {item.sku === "T-60-HOR" && (() => {
-        // Centro del aparato a la altura del frente del mueble.
         const baseX = wall.start.x * MM + dir.x * off + normal.x * (innerOff + item.depth * MM - 0.003);
         const baseZ = wall.start.y * MM + dir.y * off + normal.y * (innerOff + item.depth * MM - 0.003);
         const ovenH = 0.595, ovenW = 0.59, ovenD = 0.006;
@@ -155,21 +192,21 @@ function ModuleMesh({ placement }: { placement: ModulePlacement }) {
         const glassDZ = normal.y * 0.001;
         return (
           <>
-            <mesh position={[baseX, ovenY, baseZ]} rotation={[0, -ang, 0]}>
+            <mesh position={[baseX, ovenY, baseZ]} rotation={[0, -ang, 0]} castShadow>
               <boxGeometry args={[ovenW, ovenH, ovenD]} />
-              <meshStandardMaterial color="#2c2c2c" roughness={0.35} metalness={0.5} />
+              <meshStandardMaterial {...MAT.applianceSteel} />
             </mesh>
             <mesh position={[baseX + glassDX, ovenY, baseZ + glassDZ]} rotation={[0, -ang, 0]}>
               <boxGeometry args={[ovenW * 0.78, ovenH * 0.6, 0.0012]} />
-              <meshStandardMaterial color="#0a0a0a" roughness={0.12} metalness={0.25} />
+              <meshStandardMaterial {...MAT.applianceBlack} />
             </mesh>
-            <mesh position={[baseX, microY, baseZ]} rotation={[0, -ang, 0]}>
+            <mesh position={[baseX, microY, baseZ]} rotation={[0, -ang, 0]} castShadow>
               <boxGeometry args={[microW, microH, microD]} />
-              <meshStandardMaterial color="#2c2c2c" roughness={0.35} metalness={0.5} />
+              <meshStandardMaterial {...MAT.applianceSteel} />
             </mesh>
             <mesh position={[baseX + glassDX, microY, baseZ + glassDZ]} rotation={[0, -ang, 0]}>
               <boxGeometry args={[microW * 0.65, microH * 0.55, 0.0012]} />
-              <meshStandardMaterial color="#0a0a0a" roughness={0.12} metalness={0.25} />
+              <meshStandardMaterial {...MAT.applianceBlack} />
             </mesh>
           </>
         );
@@ -190,7 +227,6 @@ function WorktopMeshes() {
   const thickness = cfg.thickness * MM;
   const depthM = cfg.depth * MM;
   const topY = cfg.topHeight * MM;
-  const matColor = "#d6cbb0";
   return (
     <>
       {shapes.map((s, i) => {
@@ -205,36 +241,50 @@ function WorktopMeshes() {
           const cx = wall.start.x * MM + dir.x * midOff + normal.x * (innerOff + depthM / 2);
           const cz = wall.start.y * MM + dir.y * midOff + normal.y * (innerOff + depthM / 2);
           const ang = Math.atan2(wall.end.y - wall.start.y, wall.end.x - wall.start.x);
+          // Backsplash: salpicadero entre encimera (topY) y altos (1450 mm).
+          const splashTopMM = 1.45;
+          const splashH = splashTopMM - topY;
+          const splashDep = 0.015;
+          const splashOff = (wall.thickness / 2) * MM + splashDep / 2;
+          const sx = wall.start.x * MM + dir.x * midOff + normal.x * splashOff;
+          const sz = wall.start.y * MM + dir.y * midOff + normal.y * splashOff;
           return (
-            <mesh key={`wt_${i}`} position={[cx, topY - thickness / 2, cz]} rotation={[0, -ang, 0]}>
-              <boxGeometry args={[len, thickness, depthM]} />
-              <meshStandardMaterial color={matColor} roughness={0.4} metalness={0.05} />
-            </mesh>
+            <group key={`wt_${i}`}>
+              <mesh position={[cx, topY - thickness / 2, cz]} rotation={[0, -ang, 0]} castShadow receiveShadow>
+                <boxGeometry args={[len, thickness, depthM]} />
+                <meshStandardMaterial {...MAT.worktopStone} />
+              </mesh>
+              {splashH > 0.02 && (
+                <mesh position={[sx, topY + splashH / 2, sz]} rotation={[0, -ang, 0]}>
+                  <boxGeometry args={[len, splashH, splashDep]} />
+                  <meshStandardMaterial {...MAT.worktopStone} />
+                </mesh>
+              )}
+            </group>
           );
         }
         if (s.kind === "corner-fill") {
-          // Cuadrado axis-aligned al plano XZ; rotación irrelevante.
           const sideM = s.size * MM;
           return (
             <mesh
               key={`wt_${i}`}
               position={[s.center.x * MM, topY - thickness / 2, s.center.y * MM]}
-              rotation={[0, 0, 0]}
+              castShadow receiveShadow
             >
               <boxGeometry args={[sideM, thickness, sideM]} />
-              <meshStandardMaterial color={matColor} roughness={0.4} metalness={0.05} />
+              <meshStandardMaterial {...MAT.worktopStone} />
             </mesh>
           );
         }
-        // island
         return (
           <mesh
             key={`wt_${i}`}
             position={[s.centerX * MM, topY - thickness / 2, s.centerY * MM]}
             rotation={[0, -s.rotationRad, 0]}
+            castShadow receiveShadow
           >
             <boxGeometry args={[s.width * MM, thickness, s.depth * MM]} />
-            <meshStandardMaterial color={matColor} roughness={0.4} metalness={0.05} />
+            <meshStandardMaterial {...MAT.worktopStone} />
           </mesh>
         );
       })}
@@ -244,14 +294,19 @@ function WorktopMeshes() {
 
 function FloorAndCeiling({ bbox }: { bbox: RoomBbox }) {
   return (
-    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[bbox.cx, 0, bbox.cz]} receiveShadow>
-      <planeGeometry args={[bbox.sx, bbox.sz]} />
-      <meshStandardMaterial color="#f5f1e8" />
-    </mesh>
+    <>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[bbox.cx, 0, bbox.cz]} receiveShadow>
+        <planeGeometry args={[bbox.sx, bbox.sz]} />
+        <meshStandardMaterial {...MAT.floor} />
+      </mesh>
+      <mesh rotation={[Math.PI / 2, 0, 0]} position={[bbox.cx, 2.399, bbox.cz]} receiveShadow>
+        <planeGeometry args={[bbox.sx, bbox.sz]} />
+        <meshStandardMaterial {...MAT.ceiling} />
+      </mesh>
+    </>
   );
 }
 
-/** Re-encuadra la cámara cuando cambian las dimensiones de la habitación. */
 function CameraRig({ bbox }: { bbox: RoomBbox }) {
   const { camera } = useThree();
   const controls = useThree((s) => s.controls) as unknown as
@@ -259,7 +314,7 @@ function CameraRig({ bbox }: { bbox: RoomBbox }) {
     | null;
 
   useEffect(() => {
-    const eyeY = Math.max(2.5, bbox.diag * 0.55);
+    const eyeY = Math.max(1.7, bbox.diag * 0.45);
     const lateral = Math.max(2.0, bbox.diag * 0.55);
     camera.position.set(bbox.cx + lateral, eyeY, bbox.cz + lateral);
     camera.lookAt(bbox.cx, 1.2, bbox.cz);
@@ -294,18 +349,55 @@ export function Scene3D() {
   }, [project.room.walls]);
 
   return (
-    <Canvas shadows camera={{ position: [bbox.cx + 4, 3, bbox.cz + 4], fov: 50 }}>
+    <Canvas
+      shadows
+      camera={{ position: [bbox.cx + 4, 3, bbox.cz + 4], fov: 45 }}
+      gl={{ toneMapping: ACESFilmicToneMapping, toneMappingExposure: 1.05, antialias: true }}
+      dpr={[1, 2]}
+    >
+      <SoftShadows size={25} samples={12} focus={0} />
+      <CameraRig bbox={bbox} />
+
+      {/* Iluminación base: una hemisférica suave + una clave direccional
+          con sombras, todo robusto a que el HDRI no cargue. */}
+      <hemisphereLight args={["#fff8ec", "#7a6a52", 0.55]} />
+      <directionalLight
+        position={[bbox.cx + 4, 6, bbox.cz - 3]}
+        intensity={1.4}
+        castShadow
+        shadow-mapSize-width={2048}
+        shadow-mapSize-height={2048}
+        shadow-camera-near={0.5}
+        shadow-camera-far={20}
+        shadow-camera-left={-8}
+        shadow-camera-right={8}
+        shadow-camera-top={8}
+        shadow-camera-bottom={-8}
+        shadow-bias={-0.0001}
+      />
+
+      {/* HDRI ambiental (sólo lighting, no background). En propia Suspense
+          para que un fallo de red no oculte la escena entera. */}
       <Suspense fallback={null}>
-        <CameraRig bbox={bbox} />
-        <ambientLight intensity={0.6} />
-        <directionalLight position={[bbox.cx + 5, 8, bbox.cz + 5]} intensity={0.9} castShadow />
-        <Grid args={[20, 20]} cellColor="#cdd3da" sectionColor="#9aa3ad" infiniteGrid fadeDistance={20} />
-        <FloorAndCeiling bbox={bbox} />
-        {project.room.walls.map((w) => <WallMesh key={w.id} wall={w} />)}
-        <WorktopMeshes />
-        {project.modules.map((m) => <ModuleMesh key={m.id} placement={m} />)}
-        <OrbitControls makeDefault target={[bbox.cx, 1.2, bbox.cz]} />
+        <Environment preset="apartment" background={false} environmentIntensity={0.6} />
       </Suspense>
+
+      <FloorAndCeiling bbox={bbox} />
+      {project.room.walls.map((w) => <WallMesh key={w.id} wall={w} />)}
+      <WorktopMeshes />
+      {project.modules.map((m) => <ModuleMesh key={m.id} placement={m} />)}
+
+      {/* Sombras de contacto suaves para grounding visual. */}
+      <ContactShadows
+        position={[bbox.cx, 0.001, bbox.cz]}
+        opacity={0.35}
+        scale={Math.max(bbox.sx, bbox.sz) * 1.5}
+        blur={2.5}
+        far={2}
+        resolution={1024}
+      />
+
+      <OrbitControls makeDefault target={[bbox.cx, 1.2, bbox.cz]} />
     </Canvas>
   );
 }
