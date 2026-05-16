@@ -67,6 +67,26 @@ const OPENS=[
   {id:"VE-240",cat:"window",nm:"Ventanal 240",rW:2.4,h:2.2,c:"#00BCD4"},
 ];
 
+// Memoria de calidades — descripciones técnicas por partida
+const DESCRIPTIONS={
+  ext_ml:{title:"Muro exterior entramado ligero Passivhaus",text:"Muro estructural de entramado ligero en madera laminada con montantes 45×140 mm cada 60 cm. Aislamiento principal de lana de madera 140 mm entre montantes + trasdosado exterior 60 mm. Membrana de hermeticidad autoadherida con cinta certificada. Lámina transpirable SD variable. Tablero estructural OSB 15 mm interior. Espesor total ~30 cm. Transmitancia térmica U=0.15 W/m²K. Acabado exterior madera tratada o sistema SATE (a elegir). Acabado interior preparado para pladur o lama vista. Fabricado en taller con control dimensional ±2 mm."},
+  int_ml:{title:"Muro interior estructura",text:"Tabique estructural ligero con montantes de madera 45×70 mm. Aislamiento acústico de lana mineral 60 mm. Tablero OSB 15 mm en ambas caras. Preparado para acabado de pladur o revestimiento a elegir. Tornillería estructural y sellantes incluidos. Fabricado en taller, montaje con uniones mecánicas calibradas."},
+  roof_m2:{title:"Cubierta + hermeticidad",text:"Estructura de cubierta en madera con vigas dimensionadas según luz y carga. Tablero estructural OSB 18 mm. Aislamiento de lana de madera 240 mm. Lámina impermeable y transpirable de alta densidad. Listones y rastreles para ventilación. Acabado exterior en chapa lacada o teja cerámica (a elegir). Membrana de hermeticidad continua con tratamiento de uniones. Pruebas de estanqueidad según protocolo Passivhaus (n50 ≤ 0.6 h⁻¹)."},
+  floor:{title:"Cimentación / solera",text:"Cimentación por zapatas corridas y vigas riostras según estudio geotécnico. Solera de hormigón armado HA-25 de 15 cm con malla electrosoldada. Aislamiento bajo solera con XPS de alta resistencia 100 mm. Lámina antirradón y barrera de vapor. Hormigón de limpieza, encofrados y armaduras incluidos. Replanteo y nivelación. NO incluye excavación masiva ni movimiento de tierras especiales."},
+  carp:{title:"Carpinterías exteriores",text:"Ventanas con perfilería madera-aluminio o PVC alta gama según proyecto. Triple vidrio Passivhaus con cámara de argón, U=0.6-0.7 W/m²K. Sellado perimetral con cintas certificadas exterior e interior. Herrajes oscilo-batientes europeos. Puertas de entrada con núcleo aislante, cierre multipunto y bisagras tridimensionales. Premarco metálico para garantizar planeidad. Incluye colocación, sellado y prueba de hermeticidad puntual."},
+  install:{title:"Instalaciones (eléctrica, fontanería, climatización, MVHR)",text:"Instalación eléctrica completa con cuadro general según REBT, tomas, puntos de luz e iluminación LED. Fontanería de agua fría/caliente con tubería multicapa, sanitarios calidad media-alta, grifería monomando termostática. Calefacción y refrigeración por aerotermia con bomba de calor de alta eficiencia (COP > 4). Sistema de ventilación mecánica con recuperador de calor (MVHR) de eficiencia ≥ 85%. Distribución por conductos aislados. Termostatos por estancia. NO incluye placas fotovoltaicas, baterías ni domótica avanzada."},
+  finish:{title:"Acabados interiores",text:"Pavimento laminado AC4 o tarima de madera contrachapada en zonas secas. Pavimento porcelánico antideslizante en zonas húmedas. Alicatado cerámico hasta techo en baños y a media altura en cocina. Pintura plástica lavable mate en paredes y techos. Carpintería interior tipo block puerta lisa lacada con herrajes de calidad media. Sanitarios suspendidos con cisterna empotrada. Mamparas de ducha vidrio templado. Rodapiés y cantos. NO incluye obra de albañilería extra ni acabados singulares."},
+  kitchen:{title:"Cocina y mobiliario fijo",text:"Mobiliario de cocina modular con frentes laminados o lacados. Encimera de granito, compacto o silestone (~3 cm). Fregadero monocubeta acero inox bajo encimera. Grifería extraíble. Electrodomésticos integrados de gama media-alta (placa, horno, campana, lavavajillas, frigorífico). Iluminación LED bajo módulos altos. Mobiliario fijo de armarios empotrados en dormitorios principales. Estimación para vivienda 80-120 m². Para viviendas mayores o gama alta, ajustar al alza."},
+  project:{title:"Proyecto técnico + dirección de obra",text:"Proyecto básico y de ejecución redactado por arquitecto colegiado. Memoria, planos, mediciones, presupuesto, pliego de condiciones, estudio de seguridad y salud, certificado energético. Dirección de obra a cargo de arquitecto. Dirección de ejecución a cargo de arquitecto técnico. Coordinación de seguridad y salud. Levantamiento topográfico básico. Visado colegial incluido. NO incluye proyecto de actividad si fuera necesario."},
+  license:{title:"Licencias y tasas municipales",text:"Licencia de obra mayor o declaración responsable según municipio. ICIO (Impuesto sobre Construcciones, Instalaciones y Obras): 2-4% del PEM. Tasa urbanística: 1-2% del PEM. Licencia de primera ocupación. Boletines de instalaciones (eléctrico, fontanería, telecomunicaciones). Aval por gestión de residuos si procede. Las cuantías exactas dependen de cada Ayuntamiento. Estimación orientativa del 5% sobre el material base."},
+  geo:{title:"Estudio geotécnico y topográfico",text:"Estudio geotécnico con sondeo a rotación o ensayos de penetración dinámica (mínimo 2 puntos), análisis del terreno, recomendaciones de cimentación y nivel freático. Levantamiento topográfico de la parcela con curvas de nivel y replanteo de límites. Informe firmado por geólogo o ingeniero geotécnico colegiado. Necesario para proyecto y obligatorio según CTE-DB-SE-C."},
+  transport:{title:"Transporte de paneles a obra",text:"Transporte de paneles fabricados desde taller hasta la obra. Camión con grúa autocargante (10-16 t). Paletizado y protección de paneles para evitar daños en tránsito. Estimación basada en distancia ≤ 200 km desde Madrid. Para distancias mayores se presupuesta aparte. Incluye carga en taller, transporte y descarga en obra. NO incluye permisos especiales por transporte de cargas voluminosas."},
+  crane:{title:"Medios auxiliares (grúa, andamios)",text:"Alquiler de grúa móvil para montaje de paneles (1-2 días). Andamios perimetrales tipo europeo con plataformas y barandillas reglamentarias durante la fase de envolvente y cubierta. Equipos de protección colectiva. Escaleras y plataformas de trabajo. Estimación para vivienda unifamiliar de 100-150 m². Para obras mayores o con dificultades de acceso, ajustar al alza."},
+  blower:{title:"Ensayo blower door",text:"Ensayo de hermeticidad al aire según norma UNE-EN ISO 9972 con equipo Minneapolis Blower Door o similar. Medición de la tasa de renovación a 50 Pa (n50). Detección de fugas con anemómetro y cámara termográfica si procede. Informe oficial firmado por técnico acreditado. Necesario para certificación Passivhaus (n50 ≤ 0.6 h⁻¹). Incluye desplazamiento dentro de un radio de 100 km."},
+  decennial:{title:"Seguro decenal",text:"Seguro de responsabilidad decenal según Ley de Ordenación de la Edificación (LOE). Cobertura de daños materiales por vicios o defectos que afecten a la estabilidad del edificio durante 10 años desde la recepción. Obligatorio para vivienda nueva. Incluye Organismo de Control Técnico (OCT) que supervisa la obra. La prima depende del valor de la obra y del tipo de aseguradora."},
+  contingency:{title:"Imprevistos",text:"Reserva económica destinada a cubrir partidas no previstas durante la ejecución: refuerzos estructurales tras estudio geotécnico real, modificaciones por incidencias del terreno, cambios menores solicitados por el cliente, ajustes técnicos. Recomendación habitual entre 5-10% del material según complejidad y nivel de definición del proyecto."}
+};
+
 let _p=0,_o=0;
 const sH=v=>Math.round(v*2)/2;
 // Effective width in cells: custom panels use cW (meters) stored in the placement
@@ -234,13 +254,13 @@ ${planImg?`<h2>🏠 Planta</h2><img src="${planImg}" class="plan-img" />`:""}
 </table>
 
 <h2>💰 Presupuesto</h2>
+<div style="font-size:10px;color:#1F3A26;font-weight:700;margin:4px 0 6px;padding:6px 10px;background:#E8EDE0;border-left:4px solid #1F3A26;border-radius:4px">◈ NÚCLEO — Sistema constructivo Metis (siempre incluido)</div>
 <table><tr><th>Partida</th><th>Medición</th><th>Precio</th><th>Importe</th></tr>
 ${budget.items.map(it=>`<tr><td>${it.id} (${it.cat==="ext"?"muro ext.":"muro int."})</td><td>${it.ml.toFixed(1)} ml</td><td>${it.unit.toFixed(0)} €/ml</td><td>${it.cost.toFixed(0)} €</td></tr>`).join("")}
-${budget.winCount?`<tr><td>Ventanas ${glass.nm}</td><td>${budget.winCount} uds · ${energy.wA.toFixed(1)} m²</td><td>${prices.window_m2} €/m²</td><td>${budget.winCost.toFixed(0)} €</td></tr>`:""}
-${budget.doorCount?`<tr><td>Puertas</td><td>${budget.doorCount} uds</td><td>${prices.door_ud} €/ud</td><td>${budget.doorCost.toFixed(0)} €</td></tr>`:""}
-${budget.roofCost>0?`<tr><td>Cubierta</td><td>${energy.rA.toFixed(1)} m²</td><td>${prices.roof_m2} €/m²</td><td>${budget.roofCost.toFixed(0)} €</td></tr>`:""}
-${budget.floorCost>0?`<tr><td>Solera / cimentación</td><td>${(energy.fA/energy.numFloors).toFixed(1)} m²</td><td>${prices.floor_m2} €/m²</td><td>${budget.floorCost.toFixed(0)} €</td></tr>`:""}
-<tr class="sub-row"><td colspan="3">Material</td><td>${budget.matBase.toFixed(0)} €</td></tr>
+${budget.roofCost>0?`<tr><td>Cubierta + hermeticidad</td><td>${energy.rA.toFixed(1)} m²</td><td>${prices.roof_m2} €/m²</td><td>${budget.roofCost.toFixed(0)} €</td></tr>`:""}
+${budget.optionals.length>0?`<tr><td colspan="4" style="padding:8px 8px 4px;font-size:10px;font-weight:700;color:#7B1FA2;background:#F3E5F5;border-left:4px solid #7B1FA2">✓ PARTIDAS OPCIONALES INCLUIDAS</td></tr>`:""}
+${budget.optionals.map(o=>`<tr><td>${o.label}</td><td colspan="2" style="font-size:10px;color:#666">${o.qty}${o.unitLabel?" "+o.unitLabel:""}</td><td>${o.cost.toFixed(0)} €</td></tr>`).join("")}
+<tr class="sub-row"><td colspan="3">Material total</td><td>${budget.matBase.toFixed(0)} €</td></tr>
 <tr><td colspan="3">Mano de obra (${prices.labor_pct}%)</td><td>${budget.labor.toFixed(0)} €</td></tr>
 <tr class="sub-row"><td colspan="3">Coste de ejecución</td><td>${budget.subtotal.toFixed(0)} €</td></tr>
 <tr><td colspan="3">Margen comercial (${prices.margin_pct}%)</td><td>${budget.margin.toFixed(0)} €</td></tr>
@@ -250,7 +270,30 @@ ${budget.floorCost>0?`<tr><td>Solera / cimentación</td><td>${(energy.fA/energy.
 </table>
 <div style="font-size:9px;color:#999;margin-top:4px">* Presupuesto orientativo sujeto a visita técnica y condiciones del terreno</div>
 
+${budget.excluded.length>0?`<div style="margin-top:18px;padding:14px 16px;background:#FFF3E0;border:2px solid #FF6F00;border-radius:10px">
+<div style="font-size:13px;font-weight:800;color:#E65100;margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">⚠ Partidas NO incluidas en este presupuesto</div>
+<div style="font-size:11px;color:#5D2E00;line-height:1.6">El presupuesto anterior cubre únicamente las partidas marcadas como núcleo y las opcionales seleccionadas. Las siguientes partidas <strong>no están incluidas</strong> y deberán presupuestarse aparte (con otros equipos del cliente o ampliando el alcance del contrato con METIS):</div>
+<ul style="margin:8px 0 0 20px;padding:0;font-size:10.5px;color:#5D2E00;line-height:1.6">
+${budget.excluded.map(e=>`<li>${e.label}</li>`).join("")}
+</ul>
+<div style="font-size:10px;color:#5D2E00;margin-top:10px;font-style:italic">El cliente puede contratar estas partidas con otros profesionales de su confianza, o ampliar el alcance del proyecto con METIS. Consultar para presupuesto completo llave en mano.</div>
+</div>`:""}
+
 ${energy.pasH&&energy.pasC?`<div style="text-align:center;margin:16px 0;padding:14px;background:#E8EDE0;border:2px solid #1F3A26;border-radius:10px"><div style="font-size:18px;font-weight:900;color:#1F3A26">✓ CUMPLE ESTÁNDAR PASSIVHAUS</div><div style="font-size:11px;color:#2E5538;margin-top:4px">Calefacción ${energy.netH.toFixed(1)} · Refrigeración ${energy.netC.toFixed(1)} (ambos ≤ 15 kWh/m²a)</div></div>`:""}
+
+<div style="page-break-before:always;margin-top:24px"></div>
+<h2 style="font-size:18px;color:#1F3A26;margin:0 0 4px;text-transform:uppercase;letter-spacing:1.5px;border-bottom:3px solid #1F3A26;padding-bottom:6px">📋 Memoria de Calidades</h2>
+<div style="font-size:10px;color:#6B8670;margin-bottom:14px;font-style:italic">Descripción técnica de los materiales y calidades incluidos en cada partida del presupuesto.</div>
+
+<div style="font-size:12px;font-weight:800;color:#1F3A26;margin:14px 0 8px;padding:6px 10px;background:#E8EDE0;border-left:4px solid #1F3A26">◈ NÚCLEO — Sistema constructivo (siempre incluido)</div>
+${["ext_ml","int_ml","roof_m2"].map(k=>{const d=DESCRIPTIONS[k];if(!d)return"";return`<div style="margin-bottom:12px;padding:10px 12px;background:#F5F7F2;border:1px solid #d5dcc8;border-radius:6px"><div style="font-size:12px;font-weight:700;color:#1F3A26;margin-bottom:4px">${d.title}</div><div style="font-size:10px;color:#333;line-height:1.55;text-align:justify">${d.text}</div></div>`;}).join("")}
+
+${budget.optionals.length>0?`<div style="font-size:12px;font-weight:800;color:#7B1FA2;margin:18px 0 8px;padding:6px 10px;background:#F3E5F5;border-left:4px solid #7B1FA2">✓ PARTIDAS OPCIONALES INCLUIDAS</div>
+${budget.optionals.map(o=>{const d=DESCRIPTIONS[o.key];if(!d)return"";return`<div style="margin-bottom:12px;padding:10px 12px;background:#F8F4FA;border:1px solid #E1BEE7;border-radius:6px"><div style="font-size:12px;font-weight:700;color:#7B1FA2;margin-bottom:4px">${d.title}</div><div style="font-size:10px;color:#333;line-height:1.55;text-align:justify">${d.text}</div></div>`;}).join("")}`:""}
+
+${budget.excluded.length>0?`<div style="font-size:11px;font-weight:700;color:#5D2E00;margin:18px 0 6px;padding:6px 10px;background:#FFF3E0;border-left:4px solid #FF6F00">⚠ Partidas no incluidas (referencia técnica)</div>
+<div style="font-size:9px;color:#5D2E00;font-style:italic;margin-bottom:8px">Las siguientes partidas no se incluyen en el presupuesto. Se documenta su descripción a título orientativo por si el cliente decide ampliar el alcance del proyecto.</div>
+${budget.excluded.map(e=>{const d=DESCRIPTIONS[e.key];if(!d)return"";return`<div style="margin-bottom:10px;padding:8px 12px;background:#FAFAFA;border:1px dashed #BDBDBD;border-radius:6px"><div style="font-size:11px;font-weight:700;color:#666;margin-bottom:3px">${d.title}</div><div style="font-size:9.5px;color:#555;line-height:1.5;text-align:justify">${d.text}</div></div>`;}).join("")}`:""}
 
 <div class="contact-cta">
 <h3>¿Quieres llevar este proyecto a la realidad?</h3>
@@ -290,17 +333,41 @@ export default function App(){
   const [zoom,setZoom]=useState(1);
   const [pan,setPan]=useState({x:0,y:0});
   const [pricesOpen,setPricesOpen]=useState(false);
+  const DEFAULT_PRICES={
+    // CORE (siempre incluido)
+    ext_ml:285,
+    int_ml:95,
+    roof_m2:165,
+    // OPCIONALES — cada una con precio y flag enabled
+    floor_m2:140, floor_on:false,
+    door_ud:680, window_m2:480, carp_on:false,
+    install_m2:160, install_on:false,
+    finish_m2:220, finish_on:false,
+    kitchen_fixed:8500, kitchen_on:false,
+    project_m2:45, project_on:false,
+    license_pct:5, license_on:false,
+    geo_fixed:1100, geo_on:false,
+    transport_m2:8, transport_on:false,
+    crane_fixed:3500, crane_on:false,
+    blower_fixed:550, blower_on:false,
+    decennial_pct:1.2, decennial_on:false,
+    contingency_pct:7, contingency_on:false,
+    // GLOBALES
+    labor_pct:40,
+    margin_pct:20,
+    iva_pct:10
+  };
   const [prices,setPrices]=useState(()=>{
     try{
       const saved=window.localStorage?.getItem("metis_prices")||window.localStorage?.getItem("passiv_prices");
       if(saved){
         const parsed=JSON.parse(saved);
-        // Migrate old default (21% was generic IVA; 10% is correct for obra nueva)
         if(parsed.iva_pct===21)parsed.iva_pct=10;
-        return parsed;
+        // Migrate: ensure all new fields exist with defaults
+        return{...DEFAULT_PRICES,...parsed};
       }
     }catch(e){}
-    return{ext_ml:285,int_ml:95,door_ud:680,window_m2:480,roof_m2:165,floor_m2:95,labor_pct:40,margin_pct:20,iva_pct:10};
+    return DEFAULT_PRICES;
   });
   useEffect(()=>{try{window.localStorage?.setItem("metis_prices",JSON.stringify(prices));}catch(e){}},[prices]);
   // Projects
@@ -326,6 +393,8 @@ export default function App(){
   const [importText,setImportText]=useState("");
   // Custom panel dialog (for ME-CUSTOM, MI-CUSTOM, etc.)
   const [customOpen,setCustomOpen]=useState(false);
+  // Description modal (memoria de calidades)
+  const [descKey,setDescKey]=useState(null);
   const [customWidth,setCustomWidth]=useState("1.5");
   const [customAng,setCustomAng]=useState("0");
   const [customPos,setCustomPos]=useState(null); // {px,py} where to place
@@ -966,16 +1035,16 @@ export default function App(){
 
   const budget=useMemo(()=>{
     let items=[],matBase=0;
-    // Walls by linear meters — iterate placed to support custom widths
-    const byCat={};// cat → total ml
-    const byRef={};// panel id → {n, totalML}
+    const optionals=[];// {id, label, qty, unit, cost, included}
+    const excluded=[];// items not included (for PDF note)
+    // CORE: walls
+    const byRef={};
     placed.forEach(pp=>{
       const c=PANELS.find(x=>x.id===pp.cid);if(!c)return;
       const ml=effRW(pp,c);
       if(!byRef[pp.cid])byRef[pp.cid]={n:0,totalML:0,cat:c.cat};
       byRef[pp.cid].n++;
       byRef[pp.cid].totalML+=ml;
-      byCat[c.cat]=(byCat[c.cat]||0)+ml;
     });
     Object.entries(byRef).forEach(([id,info])=>{
       const unitPrice=info.cat==="ext"?prices.ext_ml:prices.int_ml;
@@ -983,18 +1052,55 @@ export default function App(){
       items.push({id,n:info.n,ml:info.totalML,unit:unitPrice,cost,cat:info.cat});
       matBase+=cost;
     });
-    // Openings
-    let wC=0,dC=0,wCost=0,dCost=0;
+    // CORE: roof
+    const roofCost=energy.rA*prices.roof_m2;
+    matBase+=roofCost;
+    // Constructed area for area-based optional partidas
+    const builtArea=energy.fA;// includes both floors
+    const planArea=energy.fA/energy.numFloors;
+    // OPTIONAL: helper to add optional item
+    const addOpt=(key,label,qty,unitLabel,cost,extra)=>{
+      const enabled=!!prices[key+"_on"];
+      const obj={key,label,qty,unitLabel,cost,enabled,...extra};
+      if(enabled){optionals.push(obj);matBase+=cost;}
+      else excluded.push(obj);
+    };
+    // Cimentación / solera
+    addOpt("floor","Cimentación / solera",planArea,"m²",planArea*prices.floor_m2,{unit:prices.floor_m2});
+    // Carpintería (puertas + ventanas)
+    let wC=0,dC=0,wArea=0;
     placed.forEach(p=>(p.ops||[]).forEach(o=>{
       const oc=OPENS.find(x=>x.id===o.cid);if(!oc)return;
-      if(oc.cat==="window"){wC++;wCost+=prices.window_m2*oc.rW*oc.h;}
-      else{dC++;dCost+=prices.door_ud;}
+      if(oc.cat==="window"){wC++;wArea+=oc.rW*oc.h;}
+      else dC++;
     }));
-    matBase+=wCost+dCost;
-    // Roof + floor (once)
-    const roofCost=energy.rA*prices.roof_m2;
-    const floorCost=(energy.fA/energy.numFloors)*prices.floor_m2;
-    matBase+=roofCost+floorCost;
+    const carpCost=(wArea*prices.window_m2)+(dC*prices.door_ud);
+    addOpt("carp",`Carpinterías (${dC} puertas, ${wC} ventanas)`,wArea.toFixed(1),"m² + ud",carpCost,{wC,dC,wArea});
+    // Instalaciones
+    addOpt("install","Instalaciones (eléctrica, fontanería, climatización, ventilación)",builtArea,"m²",builtArea*prices.install_m2,{unit:prices.install_m2});
+    // Acabados
+    addOpt("finish","Acabados interiores (pavimentos, alicatados, pintura, sanitarios)",builtArea,"m²",builtArea*prices.finish_m2,{unit:prices.finish_m2});
+    // Cocina
+    addOpt("kitchen","Cocina y mobiliario fijo",1,"ud",prices.kitchen_fixed,{});
+    // Proyecto técnico
+    addOpt("project","Proyecto técnico + dirección de obra",builtArea,"m²",builtArea*prices.project_m2,{unit:prices.project_m2});
+    // Licencias (% sobre el material base actual antes de añadir esta)
+    const baseForLicense=matBase;
+    addOpt("license","Licencias y tasas municipales",1,`% (${prices.license_pct}%)`,baseForLicense*(prices.license_pct/100),{});
+    // Estudio geotécnico
+    addOpt("geo","Estudio geotécnico y topográfico",1,"fijo",prices.geo_fixed,{});
+    // Transporte
+    addOpt("transport","Transporte de paneles a obra",builtArea,"m²",builtArea*prices.transport_m2,{unit:prices.transport_m2});
+    // Grúa / medios auxiliares
+    addOpt("crane","Medios auxiliares (grúa, andamios)",1,"fijo",prices.crane_fixed,{});
+    // Blower door
+    addOpt("blower","Ensayo blower door",1,"ud",prices.blower_fixed,{});
+    // Seguro decenal (% sobre material base actual)
+    const baseForDecennial=matBase;
+    addOpt("decennial","Seguro decenal",1,`% (${prices.decennial_pct}%)`,baseForDecennial*(prices.decennial_pct/100),{});
+    // Imprevistos (% sobre material base actual)
+    const baseForContingency=matBase;
+    addOpt("contingency","Imprevistos",1,`% (${prices.contingency_pct}%)`,baseForContingency*(prices.contingency_pct/100),{});
     // Labor, margin, IVA
     const labor=matBase*(prices.labor_pct/100);
     const subtotal=matBase+labor;
@@ -1002,8 +1108,10 @@ export default function App(){
     const beforeIVA=subtotal+margin;
     const iva=beforeIVA*(prices.iva_pct/100);
     const total=beforeIVA+iva;
-    return{items,winCount:wC,doorCount:dC,winCost:wCost,doorCost:dCost,roofCost,floorCost,matBase,labor,subtotal,margin,beforeIVA,iva,total};
-  },[energy.pc,placed,prices,energy.rA,energy.fA,energy.numFloors]);
+    return{items,roofCost,matBase,labor,subtotal,margin,beforeIVA,iva,total,optionals,excluded,
+      // Legacy compat
+      winCount:wC,doorCount:dC,winCost:wArea*prices.window_m2,doorCost:dC*prices.door_ud,floorCost:planArea*prices.floor_m2};
+  },[placed,prices,energy.rA,energy.fA,energy.numFloors]);
 
   return(
     <div style={{width:"100%",height:"100vh",background:"#0a0f18",display:"flex",flexDirection:"column",fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif",color:"#d8e2ee",overflow:"hidden",position:"relative",userSelect:"none",WebkitUserSelect:"none"}}>
@@ -1121,7 +1229,7 @@ export default function App(){
           <button onClick={()=>{setBudgetOpen(false);setPricesOpen(true);}} style={{background:"#FFD54F22",border:"1px solid #FFD54F66",borderRadius:8,color:"#FFD54F",fontSize:10,fontWeight:700,padding:"6px 10px",cursor:"pointer"}}>⚙ Ajustar</button>
         </div>
         <div style={{flex:1,overflowY:"auto",WebkitOverflowScrolling:"touch",padding:"10px 16px"}}>
-          <div style={{fontSize:8,color:"#5a7a9a",letterSpacing:1,textTransform:"uppercase",marginBottom:6}}>Muros</div>
+          <div style={{fontSize:9,color:"#B5C5A3",letterSpacing:1,textTransform:"uppercase",marginBottom:6,fontWeight:700}}>◈ Núcleo (siempre incluido)</div>
           {budget.items.map(it=>(
             <div key={it.id} style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",padding:"5px 0",fontSize:11,borderBottom:"1px solid #0f1a25"}}>
               <span style={{color:it.cat==="ext"?"#D4A05A":"#FFA726"}}>{it.id}</span>
@@ -1129,10 +1237,18 @@ export default function App(){
               <span style={{color:"#e0e8f0",fontWeight:700}}>{it.cost.toFixed(0)}€</span>
             </div>
           ))}
-          {budget.winCount>0&&<div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",padding:"5px 0",fontSize:11,borderBottom:"1px solid #0f1a25"}}><span style={{color:glass.col}}>Ventanas ×{budget.winCount}</span><span style={{color:"#5a7a9a",fontSize:9}}>{prices.window_m2}€/m²</span><span style={{color:"#e0e8f0",fontWeight:700}}>{budget.winCost.toFixed(0)}€</span></div>}
-          {budget.doorCount>0&&<div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",padding:"5px 0",fontSize:11,borderBottom:"1px solid #0f1a25"}}><span style={{color:"#A1887F"}}>Puertas ×{budget.doorCount}</span><span style={{color:"#5a7a9a",fontSize:9}}>{prices.door_ud}€/ud</span><span style={{color:"#e0e8f0",fontWeight:700}}>{budget.doorCost.toFixed(0)}€</span></div>}
-          {budget.roofCost>0&&<div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",padding:"5px 0",fontSize:11,borderBottom:"1px solid #0f1a25"}}><span style={{color:"#7CB342"}}>Cubierta</span><span style={{color:"#5a7a9a",fontSize:9}}>{energy.rA.toFixed(1)}m² · {prices.roof_m2}€/m²</span><span style={{color:"#e0e8f0",fontWeight:700}}>{budget.roofCost.toFixed(0)}€</span></div>}
-          {budget.floorCost>0&&<div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",padding:"5px 0",fontSize:11,borderBottom:"1px solid #0f1a25"}}><span style={{color:"#78909C"}}>Solera</span><span style={{color:"#5a7a9a",fontSize:9}}>{(energy.fA/energy.numFloors).toFixed(1)}m² · {prices.floor_m2}€/m²</span><span style={{color:"#e0e8f0",fontWeight:700}}>{budget.floorCost.toFixed(0)}€</span></div>}
+          {budget.roofCost>0&&<div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",padding:"5px 0",fontSize:11,borderBottom:"1px solid #0f1a25"}}><span style={{color:"#7CB342"}}>Cubierta + hermeticidad</span><span style={{color:"#5a7a9a",fontSize:9}}>{energy.rA.toFixed(1)}m² · {prices.roof_m2}€/m²</span><span style={{color:"#e0e8f0",fontWeight:700}}>{budget.roofCost.toFixed(0)}€</span></div>}
+
+          {budget.optionals.length>0&&<>
+            <div style={{fontSize:9,color:"#CE93D8",letterSpacing:1,textTransform:"uppercase",margin:"12px 0 6px",fontWeight:700}}>✓ Opcionales incluidas</div>
+            {budget.optionals.map(o=>(
+              <div key={o.key} style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",padding:"5px 0",fontSize:11,borderBottom:"1px solid #0f1a25"}}>
+                <span style={{color:"#CE93D8",flex:1,paddingRight:6,fontSize:10}}>{o.label}</span>
+                <span style={{color:"#e0e8f0",fontWeight:700}}>{o.cost.toFixed(0)}€</span>
+              </div>
+            ))}
+          </>}
+
           <BRow l="Material total" v={budget.matBase} c="#B0BEC5" bold/>
           <BRow l={`Mano de obra (${prices.labor_pct}%)`} v={budget.labor} c="#80CBC4"/>
           <BRow l="Coste ejecución" v={budget.subtotal} c="#B0BEC5" bold/>
@@ -1142,7 +1258,32 @@ export default function App(){
           <div style={{display:"flex",justifyContent:"space-between",padding:"12px 0 4px",fontSize:15,fontWeight:800,color:"#FFD54F",borderTop:"2px solid #FFD54F44",marginTop:6}}>
             <span>TOTAL</span><span>{budget.total.toFixed(0)}€</span>
           </div>
-          <div style={{fontSize:9,color:"#5a7a9a",marginTop:4,fontStyle:"italic"}}>💡 Los precios son los que has configurado. Toca ⚙ Ajustar para cambiarlos.</div>
+
+          {budget.excluded.length>0&&<div style={{marginTop:12,padding:"10px 12px",background:"#FF7B5022",border:"1px solid #FF7B5066",borderRadius:8}}>
+            <div style={{fontSize:10,color:"#FF8A65",fontWeight:700,marginBottom:4,letterSpacing:.5,textTransform:"uppercase"}}>⚠ Partidas NO incluidas en este presupuesto</div>
+            <div style={{fontSize:9,color:"#FFB199",lineHeight:1.5}}>{budget.excluded.map(e=>e.label).join(" · ")}</div>
+            <div style={{fontSize:9,color:"#FFB199",marginTop:6,fontStyle:"italic"}}>El cliente debe presupuestar estas partidas aparte (con otros equipos o contigo si lo activas en ⚙ Ajustar).</div>
+          </div>}
+
+          <div style={{fontSize:9,color:"#5a7a9a",marginTop:8,fontStyle:"italic"}}>💡 Toca ⚙ Ajustar para incluir/excluir partidas.</div>
+        </div>
+      </div>)}
+
+      {/* DESCRIPTION MODAL (memoria de calidades) */}
+      {descKey&&DESCRIPTIONS[descKey]&&(<div style={{position:"absolute",top:0,left:0,right:0,bottom:0,zIndex:50}}>
+        <div onClick={()=>setDescKey(null)} style={{position:"absolute",top:0,left:0,right:0,bottom:0,background:"#000d",backdropFilter:"blur(8px)"}}/>
+        <div style={{position:"relative",margin:"60px auto 0",width:"94%",maxWidth:480,maxHeight:"82vh",background:"linear-gradient(180deg,#0f1626,#0a1018)",border:"2px solid #42A5F566",borderRadius:16,overflow:"hidden",display:"flex",flexDirection:"column",boxShadow:"0 12px 50px #000e"}}>
+          <div style={{padding:"14px 18px",borderBottom:"1px solid #1a2535",display:"flex",justifyContent:"space-between",alignItems:"center",background:"#42A5F508"}}>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{fontSize:9,color:"#5a7a9a",letterSpacing:1,textTransform:"uppercase",fontWeight:700}}>ℹ Memoria de calidades</div>
+              <div style={{fontSize:14,fontWeight:800,color:"#42A5F5",marginTop:3,lineHeight:1.2}}>{DESCRIPTIONS[descKey].title}</div>
+            </div>
+            <button onClick={()=>setDescKey(null)} style={{background:"none",border:"1.5px solid #ffffff33",borderRadius:10,color:"#aaa",fontSize:14,padding:"4px 10px",cursor:"pointer",fontWeight:700,marginLeft:8,flexShrink:0}}>✕</button>
+          </div>
+          <div style={{flex:1,overflowY:"auto",WebkitOverflowScrolling:"touch",padding:"16px 20px"}}>
+            <div style={{fontSize:13,color:"#d8e2ee",lineHeight:1.6,whiteSpace:"pre-wrap"}}>{DESCRIPTIONS[descKey].text}</div>
+          </div>
+          <div style={{padding:"12px 18px",borderTop:"1px solid #1a2535",fontSize:9,color:"#5a7a9a",fontStyle:"italic",textAlign:"center"}}>Esta descripción aparecerá en el anexo "Memoria de calidades" del PDF generado</div>
         </div>
       </div>)}
 
@@ -1197,27 +1338,41 @@ export default function App(){
       {/* PRICES EDITOR */}
       {pricesOpen&&(<div style={{position:"absolute",top:0,left:0,right:0,bottom:0,zIndex:35}}>
         <div onClick={()=>setPricesOpen(false)} style={{position:"absolute",top:0,left:0,right:0,bottom:0,background:"#000c",backdropFilter:"blur(6px)"}} />
-        <div style={{position:"relative",margin:"44px auto 0",width:"94%",maxWidth:440,maxHeight:"82vh",background:"linear-gradient(180deg,#0f1626,#0a1018)",border:"2px solid #FFD54F44",borderRadius:16,overflow:"hidden",display:"flex",flexDirection:"column",boxShadow:"0 12px 50px #000e"}}>
+        <div style={{position:"relative",margin:"30px auto 0",width:"94%",maxWidth:480,maxHeight:"88vh",background:"linear-gradient(180deg,#0f1626,#0a1018)",border:"2px solid #FFD54F44",borderRadius:16,overflow:"hidden",display:"flex",flexDirection:"column",boxShadow:"0 12px 50px #000e"}}>
           <div style={{padding:"14px 18px",borderBottom:"1px solid #1a2535",display:"flex",justifyContent:"space-between",alignItems:"center",background:"#FFD54F08"}}>
             <div>
-              <div style={{fontSize:14,fontWeight:800,color:"#FFD54F",letterSpacing:.3}}>⚙ Precios y Márgenes</div>
-              <div style={{fontSize:9,color:"#5a7a9a",marginTop:2}}>Se guardan automáticamente en tu dispositivo</div>
+              <div style={{fontSize:14,fontWeight:800,color:"#FFD54F",letterSpacing:.3}}>⚙ Precios y Partidas</div>
+              <div style={{fontSize:9,color:"#5a7a9a",marginTop:2}}>Núcleo siempre incluido. Opcionales con check on/off.</div>
             </div>
             <button onClick={()=>setPricesOpen(false)} style={{background:"none",border:"1.5px solid #ffffff33",borderRadius:10,color:"#aaa",fontSize:14,padding:"4px 10px",cursor:"pointer",fontWeight:700}}>✕</button>
           </div>
           <div style={{flex:1,overflowY:"auto",WebkitOverflowScrolling:"touch",padding:"10px 16px"}}>
-            <div style={{fontSize:8,color:"#5a7a9a",letterSpacing:1,textTransform:"uppercase",margin:"6px 0 4px"}}>Materiales</div>
-            <PRow l="Muro exterior Passivhaus" u="€/ml" v={prices.ext_ml} fn={v=>setPrices(p=>({...p,ext_ml:v}))}/>
-            <PRow l="Muro interior" u="€/ml" v={prices.int_ml} fn={v=>setPrices(p=>({...p,int_ml:v}))}/>
-            <PRow l="Puertas" u="€/ud" v={prices.door_ud} fn={v=>setPrices(p=>({...p,door_ud:v}))}/>
-            <PRow l="Ventanas" u="€/m²" v={prices.window_m2} fn={v=>setPrices(p=>({...p,window_m2:v}))}/>
-            <PRow l="Cubierta" u="€/m²" v={prices.roof_m2} fn={v=>setPrices(p=>({...p,roof_m2:v}))}/>
-            <PRow l="Solera/Cimentación" u="€/m²" v={prices.floor_m2} fn={v=>setPrices(p=>({...p,floor_m2:v}))}/>
-            <div style={{fontSize:8,color:"#5a7a9a",letterSpacing:1,textTransform:"uppercase",margin:"14px 0 4px"}}>Porcentajes</div>
-            <PRow l="Mano de obra" u="%" v={prices.labor_pct} fn={v=>setPrices(p=>({...p,labor_pct:v}))}/>
-            <PRow l="Margen comercial" u="%" v={prices.margin_pct} fn={v=>setPrices(p=>({...p,margin_pct:v}))}/>
+            <div style={{fontSize:9,color:"#B5C5A3",letterSpacing:1,textTransform:"uppercase",margin:"4px 0 6px",fontWeight:700,padding:"6px 10px",background:"#1F3A2622",borderRadius:6,border:"1px solid #B5C5A344"}}>◈ Núcleo (siempre incluido)</div>
+            <PRow l="Muro exterior entramado ligero Passivhaus" u="€/ml" v={prices.ext_ml} fn={v=>setPrices(p=>({...p,ext_ml:v}))} onInfo={()=>setDescKey("ext_ml")}/>
+            <PRow l="Muro interior estructura" u="€/ml" v={prices.int_ml} fn={v=>setPrices(p=>({...p,int_ml:v}))} onInfo={()=>setDescKey("int_ml")}/>
+            <PRow l="Cubierta + hermeticidad" u="€/m²" v={prices.roof_m2} fn={v=>setPrices(p=>({...p,roof_m2:v}))} onInfo={()=>setDescKey("roof_m2")}/>
+
+            <div style={{fontSize:9,color:"#CE93D8",letterSpacing:1,textTransform:"uppercase",margin:"14px 0 6px",fontWeight:700,padding:"6px 10px",background:"#AB47BC22",borderRadius:6,border:"1px solid #CE93D844"}}>☐ Partidas opcionales (marca para incluir)</div>
+            <OptRow l="Cimentación / solera" u="€/m²" v={prices.floor_m2} fn={v=>setPrices(p=>({...p,floor_m2:v}))} on={prices.floor_on} ofn={()=>setPrices(p=>({...p,floor_on:!p.floor_on}))} onInfo={()=>setDescKey("floor")}/>
+            <OptRow l="Carpinterías exteriores" u="puerta €/ud · vent. €/m²" v={prices.window_m2} v2={prices.door_ud} fn={v=>setPrices(p=>({...p,window_m2:v}))} fn2={v=>setPrices(p=>({...p,door_ud:v}))} on={prices.carp_on} ofn={()=>setPrices(p=>({...p,carp_on:!p.carp_on}))} dual onInfo={()=>setDescKey("carp")}/>
+            <OptRow l="Instalaciones (eléct., fontan., climat., MVHR)" u="€/m² construido" v={prices.install_m2} fn={v=>setPrices(p=>({...p,install_m2:v}))} on={prices.install_on} ofn={()=>setPrices(p=>({...p,install_on:!p.install_on}))} onInfo={()=>setDescKey("install")}/>
+            <OptRow l="Acabados interiores" u="€/m² construido" v={prices.finish_m2} fn={v=>setPrices(p=>({...p,finish_m2:v}))} on={prices.finish_on} ofn={()=>setPrices(p=>({...p,finish_on:!p.finish_on}))} onInfo={()=>setDescKey("finish")}/>
+            <OptRow l="Cocina y mobiliario fijo" u="€ fijo" v={prices.kitchen_fixed} fn={v=>setPrices(p=>({...p,kitchen_fixed:v}))} on={prices.kitchen_on} ofn={()=>setPrices(p=>({...p,kitchen_on:!p.kitchen_on}))} onInfo={()=>setDescKey("kitchen")}/>
+            <OptRow l="Proyecto técnico + dirección de obra" u="€/m² construido" v={prices.project_m2} fn={v=>setPrices(p=>({...p,project_m2:v}))} on={prices.project_on} ofn={()=>setPrices(p=>({...p,project_on:!p.project_on}))} onInfo={()=>setDescKey("project")}/>
+            <OptRow l="Licencias y tasas municipales" u="% sobre material" v={prices.license_pct} fn={v=>setPrices(p=>({...p,license_pct:v}))} on={prices.license_on} ofn={()=>setPrices(p=>({...p,license_on:!p.license_on}))} onInfo={()=>setDescKey("license")}/>
+            <OptRow l="Estudio geotécnico y topográfico" u="€ fijo" v={prices.geo_fixed} fn={v=>setPrices(p=>({...p,geo_fixed:v}))} on={prices.geo_on} ofn={()=>setPrices(p=>({...p,geo_on:!p.geo_on}))} onInfo={()=>setDescKey("geo")}/>
+            <OptRow l="Transporte de paneles a obra" u="€/m² construido" v={prices.transport_m2} fn={v=>setPrices(p=>({...p,transport_m2:v}))} on={prices.transport_on} ofn={()=>setPrices(p=>({...p,transport_on:!p.transport_on}))} onInfo={()=>setDescKey("transport")}/>
+            <OptRow l="Medios auxiliares (grúa, andamios)" u="€ fijo" v={prices.crane_fixed} fn={v=>setPrices(p=>({...p,crane_fixed:v}))} on={prices.crane_on} ofn={()=>setPrices(p=>({...p,crane_on:!p.crane_on}))} onInfo={()=>setDescKey("crane")}/>
+            <OptRow l="Ensayo blower door" u="€ fijo" v={prices.blower_fixed} fn={v=>setPrices(p=>({...p,blower_fixed:v}))} on={prices.blower_on} ofn={()=>setPrices(p=>({...p,blower_on:!p.blower_on}))} onInfo={()=>setDescKey("blower")}/>
+            <OptRow l="Seguro decenal" u="% sobre material" v={prices.decennial_pct} fn={v=>setPrices(p=>({...p,decennial_pct:v}))} on={prices.decennial_on} ofn={()=>setPrices(p=>({...p,decennial_on:!p.decennial_on}))} onInfo={()=>setDescKey("decennial")}/>
+            <OptRow l="Imprevistos" u="% sobre material" v={prices.contingency_pct} fn={v=>setPrices(p=>({...p,contingency_pct:v}))} on={prices.contingency_on} ofn={()=>setPrices(p=>({...p,contingency_on:!p.contingency_on}))} onInfo={()=>setDescKey("contingency")}/>
+
+            <div style={{fontSize:9,color:"#FFD54F",letterSpacing:1,textTransform:"uppercase",margin:"14px 0 6px",fontWeight:700,padding:"6px 10px",background:"#FFD54F1c",borderRadius:6,border:"1px solid #FFD54F44"}}>% Globales (sobre el subtotal)</div>
+            <PRow l="Mano de obra" u="% sobre material" v={prices.labor_pct} fn={v=>setPrices(p=>({...p,labor_pct:v}))}/>
+            <PRow l="Margen comercial" u="% sobre subtotal" v={prices.margin_pct} fn={v=>setPrices(p=>({...p,margin_pct:v}))}/>
             <PRow l="IVA obra nueva" u="% (10% general · 4% VPO · 21% otros)" v={prices.iva_pct} fn={v=>setPrices(p=>({...p,iva_pct:v}))}/>
-            <button onClick={()=>{if(confirm("¿Restaurar precios por defecto?"))setPrices({ext_ml:285,int_ml:95,door_ud:680,window_m2:480,roof_m2:165,floor_m2:95,labor_pct:40,margin_pct:20,iva_pct:10});}} style={{width:"100%",marginTop:16,padding:"10px",background:"#FF524022",border:"1px solid #FF524066",borderRadius:10,color:"#FF7043",fontSize:11,fontWeight:700,cursor:"pointer"}}>↺ Restaurar por defecto</button>
+
+            <button onClick={()=>{if(confirm("¿Restaurar precios por defecto? Las partidas opcionales se desmarcarán."))setPrices(DEFAULT_PRICES);}} style={{width:"100%",marginTop:16,marginBottom:6,padding:"10px",background:"#FF524022",border:"1px solid #FF524066",borderRadius:10,color:"#FF7043",fontSize:11,fontWeight:700,cursor:"pointer"}}>↺ Restaurar por defecto</button>
           </div>
         </div>
       </div>)}
@@ -1404,5 +1559,20 @@ function CC({a,c,fn,nm,dt}){return(<button onClick={fn} style={{padding:"11px 12
 function TB({ic,l,a,c,fn}){return(<button onClick={fn} style={{flex:1,padding:"11px 2px",background:a?`linear-gradient(180deg,${c}15,${c}08)`:"none",border:"none",borderTop:a?`2.5px solid ${c}`:"2.5px solid transparent",color:a?c:"#5a7a9a",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:3,minHeight:52}}><span style={{fontSize:17}}>{ic}</span><span style={{fontSize:9,fontWeight:600,letterSpacing:.2}}>{l}</span></button>);}
 function St({l,v,c}){return(<div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:1}}><span style={{fontSize:7,color:"#4a6a84",letterSpacing:.8,textTransform:"uppercase",fontWeight:600}}>{l}</span><span style={{fontSize:10,color:c,fontWeight:700}}>{v}</span></div>);}
 function BRow({l,v,c,bold}){return(<div style={{display:"flex",justifyContent:"space-between",padding:"6px 0",fontSize:bold?12:11,color:c,borderTop:bold?"1px solid #2a3a4a":"none",marginTop:bold?4:0,fontWeight:bold?700:400}}><span>{l}</span><span>{v.toFixed(0)}€</span></div>);}
-function PRow({l,u,v,fn}){return(<div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"8px 0",gap:10,borderBottom:"1px solid #1a2535"}}><div style={{flex:1}}><div style={{fontSize:11,color:"#b0c4d4",fontWeight:600}}>{l}</div><div style={{fontSize:9,color:"#5a7a9a"}}>{u}</div></div><input type="number" value={v} onChange={e=>fn(Math.max(0,+e.target.value||0))} style={{width:90,textAlign:"right"}} /></div>);}
+function PRow({l,u,v,fn,onInfo}){return(<div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"8px 0",gap:8,borderBottom:"1px solid #1a2535"}}><div style={{flex:1,minWidth:0}}><div style={{fontSize:11,color:"#b0c4d4",fontWeight:600,display:"flex",alignItems:"center",gap:6}}>{l}{onInfo&&<button onClick={onInfo} title="Ver memoria de calidades" style={{background:"#42A5F522",border:"1px solid #42A5F566",borderRadius:50,color:"#42A5F5",fontSize:9,fontWeight:700,width:18,height:18,padding:0,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>ℹ</button>}</div><div style={{fontSize:9,color:"#5a7a9a"}}>{u}</div></div><input type="number" value={v} onChange={e=>fn(Math.max(0,+e.target.value||0))} style={{width:90,textAlign:"right"}} /></div>);}
+function OptRow({l,u,v,v2,fn,fn2,on,ofn,dual,onInfo}){
+  return(<div style={{display:"flex",alignItems:"center",padding:"10px 0",gap:8,borderBottom:"1px solid #1a2535",opacity:on?1:.55}}>
+    <button onClick={ofn} style={{flexShrink:0,width:24,height:24,borderRadius:6,border:`2px solid ${on?"#CE93D8":"#3a4a60"}`,background:on?"#CE93D8":"transparent",color:"#0a1018",fontSize:14,fontWeight:900,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:0}}>{on?"✓":""}</button>
+    <div style={{flex:1,minWidth:0}}>
+      <div style={{fontSize:11,color:on?"#d8e2ee":"#7a8aa0",fontWeight:600,lineHeight:1.2,display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>{l}{onInfo&&<button onClick={onInfo} title="Ver memoria de calidades" style={{background:"#42A5F522",border:"1px solid #42A5F566",borderRadius:50,color:"#42A5F5",fontSize:9,fontWeight:700,width:18,height:18,padding:0,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>ℹ</button>}</div>
+      <div style={{fontSize:9,color:"#5a7a9a",marginTop:2}}>{u}</div>
+    </div>
+    {dual?
+      <div style={{display:"flex",flexDirection:"column",gap:3}}>
+        <input type="number" value={v} onChange={e=>fn(Math.max(0,+e.target.value||0))} style={{width:80,textAlign:"right",fontSize:14,padding:"4px 6px"}} placeholder="vent."/>
+        <input type="number" value={v2} onChange={e=>fn2(Math.max(0,+e.target.value||0))} style={{width:80,textAlign:"right",fontSize:14,padding:"4px 6px"}} placeholder="puerta"/>
+      </div>
+      :<input type="number" value={v} onChange={e=>fn(Math.max(0,+e.target.value||0))} style={{width:90,textAlign:"right"}}/>}
+  </div>);
+}
 function CField({l,v,fn,ph,type}){return(<div><div style={{fontSize:10,color:"#b0c4d4",fontWeight:600,marginBottom:4}}>{l}</div><input type={type||"text"} value={v} onChange={e=>fn(e.target.value)} placeholder={ph} style={{width:"100%"}}/></div>);}
