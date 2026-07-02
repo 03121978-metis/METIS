@@ -1,7 +1,7 @@
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { OrbitControls, Environment } from "@react-three/drei";
+import { OrbitControls, Edges } from "@react-three/drei";
 import { Suspense, useEffect, useMemo, useRef } from "react";
-import type { MeshStandardMaterial } from "three";
+import type { MeshToonMaterial } from "three";
 import { useProject } from "../store";
 import { getCatalogItem } from "../kitchen/catalog";
 import { wallDirection, wallInteriorNormal, wallLength } from "../kitchen/validation";
@@ -10,18 +10,30 @@ import { computeWorktopShapes } from "../lib/worktop";
 
 const MM = 0.001; // 1 mm en metros
 
-// ─── Paleta de materiales ─────────────────────────────────────────────────
+// ─── Paleta SketchUp ──────────────────────────────────────────────────────
+// Colores planos, ligeramente saturados. Todo va con meshToonMaterial para
+// que quede 2-tono, y con bordes negros por drei <Edges>.
 const MAT = {
-  floor: { color: "#c9a679", roughness: 0.68, metalness: 0.02 },
-  wall: { color: "#ece7dc", roughness: 0.88, metalness: 0 },
-  ceiling: { color: "#f6f4ef", roughness: 0.95, metalness: 0 },
-  cabinetWhite: { color: "#f3f0e9", roughness: 0.78, metalness: 0 },
-  worktopStone: { color: "#dccfb4", roughness: 0.35, metalness: 0.05 },
-  applianceSteel: { color: "#5a5e62", roughness: 0.32, metalness: 0.78 },
-  applianceBlack: { color: "#1a1a1a", roughness: 0.18, metalness: 0.55 },
-  sinkCeramic: { color: "#f4f3ef", roughness: 0.18, metalness: 0.04 },
-  groove: { color: "#1a1a1a", roughness: 0.85, metalness: 0 },
+  floor: "#c8a069",
+  wall: "#eae7de",
+  cabinetWhite: "#f2eee5",
+  worktopStone: "#c5bda6",
+  applianceSteel: "#8a8f95",
+  applianceBlack: "#2a2a2a",
+  sinkCeramic: "#efeee7",
+  groove: "#1a1a1a",
+  zocalo: "#222",
+  drawer: "#8a8a8a",
 } as const;
+
+const EDGE_COLOR = "#111";
+const EDGE_THRESHOLD = 14;
+const EDGE_WIDTH = 1;
+
+/** Bordes negros estilo SketchUp para cualquier mesh con <boxGeometry>. */
+function SketchEdges({ scale = 1 }: { scale?: number }) {
+  return <Edges color={EDGE_COLOR} threshold={EDGE_THRESHOLD} linewidth={EDGE_WIDTH} scale={scale} />;
+}
 
 function WallMesh({ wall }: { wall: Wall }) {
   const len = wallLength(wall) * MM;
@@ -31,34 +43,31 @@ function WallMesh({ wall }: { wall: Wall }) {
   const thickness = wall.thickness * MM;
   const height = 2.4;
   const normal = wallInteriorNormal(wall);
-  const matRef = useRef<MeshStandardMaterial>(null);
+  const matRef = useRef<MeshToonMaterial>(null);
+  const groupRef = useRef<import("three").Group>(null);
 
-  // X-ray: si la cámara está fuera del lado interior del muro, lo atenuamos
-  // para no taparle al usuario la vista del interior. Lerp suave.
   useFrame(({ camera }) => {
     const mat = matRef.current;
     if (!mat) return;
     const dx = camera.position.x - cx;
     const dz = camera.position.z - cz;
     const dot = dx * normal.x + dz * normal.y;
-    const target = dot > 0 ? 1 : 0.06;
+    const target = dot > 0 ? 1 : 0.05;
     mat.opacity += (target - mat.opacity) * 0.18;
     mat.transparent = mat.opacity < 0.98;
     mat.depthWrite = mat.opacity > 0.5;
+    // Hide the outline group too when wall is nearly transparent.
+    if (groupRef.current) groupRef.current.visible = mat.opacity > 0.15;
   });
 
   return (
-    <mesh position={[cx, height / 2, cz]} rotation={[0, -ang, 0]} receiveShadow castShadow>
-      <boxGeometry args={[len, height, thickness]} />
-      <meshStandardMaterial
-        ref={matRef}
-        color={MAT.wall.color}
-        roughness={MAT.wall.roughness}
-        metalness={MAT.wall.metalness}
-        transparent
-        opacity={1}
-      />
-    </mesh>
+    <group ref={groupRef}>
+      <mesh position={[cx, height / 2, cz]} rotation={[0, -ang, 0]} receiveShadow>
+        <boxGeometry args={[len, height, thickness]} />
+        <meshToonMaterial ref={matRef} color={MAT.wall} transparent opacity={1} />
+        <SketchEdges />
+      </mesh>
+    </group>
   );
 }
 
@@ -76,7 +85,8 @@ function ModuleMesh({ placement }: { placement: ModulePlacement }) {
       <mesh position={[placement.position.x * MM, h / 2, placement.position.y * MM]}
             rotation={[0, -placement.rotation, 0]} castShadow receiveShadow>
         <boxGeometry args={[w, h, d]} />
-        <meshStandardMaterial {...MAT.cabinetWhite} />
+        <meshToonMaterial color={MAT.cabinetWhite} />
+        <SketchEdges />
       </mesh>
     );
   }
@@ -135,27 +145,28 @@ function ModuleMesh({ placement }: { placement: ModulePlacement }) {
       <mesh position={[cx, mountBottom + h / 2, cz]} rotation={[0, -ang, 0]}
             scale={[placement.mirrored ? -1 : 1, 1, 1]} castShadow receiveShadow>
         <boxGeometry args={[widthMM, h, item.depth * MM]} />
-        <meshStandardMaterial {...mat} />
+        <meshToonMaterial color={mat} />
+        <SketchEdges />
       </mesh>
       {/* Garganta perfil J */}
       {isMatteWhite && (
         <mesh position={[grooveX, grooveY, grooveZ]} rotation={[0, -ang, 0]}>
           <boxGeometry args={[widthMM - 0.01, grooveH, grooveD]} />
-          <meshStandardMaterial {...MAT.groove} />
+          <meshToonMaterial color={MAT.groove} />
         </mesh>
       )}
       {/* Vertical split: puertas 2P */}
       {has2P && (
         <mesh position={[splitX, mountBottom + h / 2, splitZ]} rotation={[0, -ang, 0]}>
           <boxGeometry args={[0.002, h - 0.04, 0.003]} />
-          <meshStandardMaterial color="#888" roughness={0.7} />
+          <meshToonMaterial color={MAT.drawer} />
         </mesh>
       )}
       {/* Cajoneras 3C: tres líneas horizontales repartidas */}
       {has3C && [0.25, 0.5, 0.75].map((p, idx) => (
         <mesh key={`c${idx}`} position={[splitX, mountBottom + h * p, splitZ]} rotation={[0, -ang, 0]}>
           <boxGeometry args={[widthMM - 0.02, 0.002, 0.003]} />
-          <meshStandardMaterial color="#888" roughness={0.7} />
+          <meshToonMaterial color={MAT.drawer} />
         </mesh>
       ))}
       {/* Zócalo bajo bases (rellena los 100 mm de patas, recess 30 mm) */}
@@ -168,7 +179,8 @@ function ModuleMesh({ placement }: { placement: ModulePlacement }) {
         return (
           <mesh position={[zX, zocH / 2, zZ]} rotation={[0, -ang, 0]} castShadow>
             <boxGeometry args={[widthMM - 0.01, zocH, zocDep]} />
-            <meshStandardMaterial color="#1a1a1a" roughness={0.75} metalness={0.05} />
+            <meshToonMaterial color={MAT.zocalo} />
+            <SketchEdges />
           </mesh>
         );
       })()}
@@ -181,12 +193,12 @@ function ModuleMesh({ placement }: { placement: ModulePlacement }) {
           <>
             <mesh position={[frontX, mountBottom + h * 0.66, frontZ]} rotation={[0, -ang, 0]}>
               <boxGeometry args={[lineW, 0.008, 0.002]} />
-              <meshStandardMaterial color="#888" roughness={0.5} metalness={0.4} />
+              <meshToonMaterial color={MAT.drawer} />
             </mesh>
             {(item.mountHeight ?? 0) === 0 && (
               <mesh position={[frontX, 0.08, frontZ]} rotation={[0, -ang, 0]}>
                 <boxGeometry args={[lineW, 0.04, 0.002]} />
-                <meshStandardMaterial color="#555" roughness={0.7} metalness={0.2} />
+                <meshToonMaterial color="#555" />
               </mesh>
             )}
           </>
@@ -200,7 +212,7 @@ function ModuleMesh({ placement }: { placement: ModulePlacement }) {
         return (
           <mesh position={[frontX, 0.87, frontZ]} rotation={[0, -ang, 0]}>
             <boxGeometry args={[lineW, 0.018, 0.002]} />
-            <meshStandardMaterial {...MAT.groove} />
+            <meshToonMaterial color={MAT.groove} />
           </mesh>
         );
       })()}
@@ -218,19 +230,21 @@ function ModuleMesh({ placement }: { placement: ModulePlacement }) {
           <>
             <mesh position={[baseX, ovenY, baseZ]} rotation={[0, -ang, 0]} castShadow>
               <boxGeometry args={[ovenW, ovenH, ovenD]} />
-              <meshStandardMaterial {...MAT.applianceSteel} />
+              <meshToonMaterial color={MAT.applianceSteel} />
+              <SketchEdges />
             </mesh>
             <mesh position={[baseX + glassDX, ovenY, baseZ + glassDZ]} rotation={[0, -ang, 0]}>
               <boxGeometry args={[ovenW * 0.78, ovenH * 0.6, 0.0012]} />
-              <meshStandardMaterial {...MAT.applianceBlack} />
+              <meshToonMaterial color={MAT.applianceBlack} />
             </mesh>
             <mesh position={[baseX, microY, baseZ]} rotation={[0, -ang, 0]} castShadow>
               <boxGeometry args={[microW, microH, microD]} />
-              <meshStandardMaterial {...MAT.applianceSteel} />
+              <meshToonMaterial color={MAT.applianceSteel} />
+              <SketchEdges />
             </mesh>
             <mesh position={[baseX + glassDX, microY, baseZ + glassDZ]} rotation={[0, -ang, 0]}>
               <boxGeometry args={[microW * 0.65, microH * 0.55, 0.0012]} />
-              <meshStandardMaterial {...MAT.applianceBlack} />
+              <meshToonMaterial color={MAT.applianceBlack} />
             </mesh>
           </>
         );
@@ -276,12 +290,14 @@ function WorktopMeshes() {
             <group key={`wt_${i}`}>
               <mesh position={[cx, topY - thickness / 2, cz]} rotation={[0, -ang, 0]} castShadow receiveShadow>
                 <boxGeometry args={[len, thickness, depthM]} />
-                <meshStandardMaterial {...MAT.worktopStone} />
+                <meshToonMaterial color={MAT.worktopStone} />
+                <SketchEdges />
               </mesh>
               {splashH > 0.02 && (
                 <mesh position={[sx, topY + splashH / 2, sz]} rotation={[0, -ang, 0]}>
                   <boxGeometry args={[len, splashH, splashDep]} />
-                  <meshStandardMaterial {...MAT.worktopStone} />
+                  <meshToonMaterial color={MAT.worktopStone} />
+                  <SketchEdges />
                 </mesh>
               )}
             </group>
@@ -296,7 +312,8 @@ function WorktopMeshes() {
               castShadow receiveShadow
             >
               <boxGeometry args={[sideM, thickness, sideM]} />
-              <meshStandardMaterial {...MAT.worktopStone} />
+              <meshToonMaterial color={MAT.worktopStone} />
+              <SketchEdges />
             </mesh>
           );
         }
@@ -308,7 +325,8 @@ function WorktopMeshes() {
             castShadow receiveShadow
           >
             <boxGeometry args={[s.width * MM, thickness, s.depth * MM]} />
-            <meshStandardMaterial {...MAT.worktopStone} />
+            <meshToonMaterial color={MAT.worktopStone} />
+            <SketchEdges />
           </mesh>
         );
       })}
@@ -322,7 +340,7 @@ function FloorAndCeiling({ bbox }: { bbox: RoomBbox }) {
   return (
     <mesh rotation={[-Math.PI / 2, 0, 0]} position={[bbox.cx, 0, bbox.cz]} receiveShadow>
       <planeGeometry args={[bbox.sx, bbox.sz]} />
-      <meshStandardMaterial {...MAT.floor} />
+      <meshToonMaterial color={MAT.floor} />
     </mesh>
   );
 }
@@ -382,13 +400,16 @@ export function Scene3D() {
       gl={{ antialias: true }}
     >
       <Suspense fallback={null}>
+        <color attach="background" args={["#f6f5f0"]} />
         <CameraRig bbox={bbox} />
 
-        {/* Iluminación base: ambiente alto + clave cerca de la cámara + fill. */}
-        <ambientLight intensity={0.8} color="#fff5e6" />
+        {/* Iluminación estilo SketchUp: ambiente alto plano + una direccional
+            suave que da el segundo tono del toon shading. Sin fill para no
+            aplanar los bordes. */}
+        <ambientLight intensity={1.5} color="#ffffff" />
         <directionalLight
-          position={[bbox.cx + 3, 5, bbox.cz + 3]}
-          intensity={2.2}
+          position={[bbox.cx + 3, 6, bbox.cz + 2]}
+          intensity={0.9}
           castShadow
           shadow-mapSize-width={1024}
           shadow-mapSize-height={1024}
@@ -399,17 +420,6 @@ export function Scene3D() {
           shadow-camera-top={6}
           shadow-camera-bottom={-6}
         />
-        <directionalLight
-          position={[bbox.cx - 4, 4, bbox.cz - 4]}
-          intensity={0.6}
-          color="#dde6ee"
-        />
-
-        {/* HDRI sólo para reflejos suaves (IBL). En su propio Suspense para
-            que un fallo de red no rompa la escena. */}
-        <Suspense fallback={null}>
-          <Environment preset="apartment" background={false} />
-        </Suspense>
 
         <FloorAndCeiling bbox={bbox} />
         {project.room.walls.map((w) => <WallMesh key={w.id} wall={w} />)}
